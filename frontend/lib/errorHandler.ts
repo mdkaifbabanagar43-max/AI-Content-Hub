@@ -10,8 +10,9 @@ export const handleAppError = (error: unknown, refundCallback?: () => void) => {
     let description = "";
 
     // Parse Error Message
-    const errorString = error?.message || error?.toString() || "";
-    const errorCode = error?.status || error?.code;
+    const errObj = err as { message?: string; status?: number; code?: string | number };
+    const errorString = errObj?.message || err?.toString() || "";
+    const errorCode = errObj?.status || errObj?.code;
 
     if (errorString.includes('Network Error') || errorString.includes('Failed to fetch')) {
         message = "Connection lost.";

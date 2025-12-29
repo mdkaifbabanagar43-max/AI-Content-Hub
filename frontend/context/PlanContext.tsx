@@ -32,8 +32,8 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
     // Real-time Firestore Sync + API Capabilities Fetch
     useEffect(() => {
         if (!user) {
-            setCredits(prev => prev !== 0 ? 0 : prev);
-            setCapabilities(prev => prev !== null ? null : prev);
+            setCredits((prev: number) => prev !== 0 ? 0 : prev);
+            setCapabilities((prev: any) => prev !== null ? null : prev);
             return;
         }
 
