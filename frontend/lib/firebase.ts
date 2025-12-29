@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -20,7 +20,7 @@ if (!firebaseConfig.apiKey) {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 // Use long polling to avoid timeout issues in some environments
-import { initializeFirestore, experimentalAutoDetectLongPolling } from "firebase/firestore";
+import { initializeFirestore } from "firebase/firestore";
 const db = initializeFirestore(app, {
     experimentalForceLongPolling: true,
 });

@@ -891,7 +891,6 @@ export default function ViralRepurposer() {
             ) : resultUrl ? (
                 <div className="space-y-6 animate-in zoom-in duration-500">
                     {/* VIDEO PLAYER FIX */}
-                    {console.log("📺 Rendering Video Player. URL:", resultUrl)}
                     <div className="aspect-[9/16] max-h-[60vh] mx-auto bg-black rounded-3xl overflow-hidden shadow-2xl border border-zinc-800 relative group">
                         <video
                             key={resultUrl}

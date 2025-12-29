@@ -6,7 +6,7 @@ import { API_BASE_URL } from '../lib/config';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 
-type PlanType = 'starter' | 'pro' | 'creator' | 'agency';
+type PlanType = 'free' | 'starter' | 'pro' | 'creator' | 'agency';
 
 interface PlanContextType {
     userPlan: PlanType;
@@ -32,8 +32,8 @@ export const PlanProvider = ({ children }: { children: ReactNode }) => {
     // Real-time Firestore Sync + API Capabilities Fetch
     useEffect(() => {
         if (!user) {
-            setCredits(0);
-            setCapabilities(null);
+            setCredits(prev => prev !== 0 ? 0 : prev);
+            setCapabilities(prev => prev !== null ? null : prev);
             return;
         }
 

@@ -1,33 +1,45 @@
 import { usePlan } from '../context/PlanContext';
 
 export const PLAN_FEATURES = {
+    free: {
+        allowed_langs: ['es', 'fr', 'hi'],
+        hinglish: false,
+        repurposer_modes: ['center_crop'],
+        voice_cloning: false,
+        resolution: '720p',
+        all_presets: false
+    },
     starter: {
         allowed_langs: ['es', 'fr', 'hi'],
         hinglish: false,
         repurposer_modes: ['center_crop'], // Only basic crop
         voice_cloning: false,
-        resolution: '720p'
+        resolution: '720p',
+        all_presets: false
     },
     pro: {
         allowed_langs: ['es', 'fr', 'hi', 'de', 'it', 'pt', 'ru', 'ja', 'ko', 'zh'], // Top 10
         hinglish: false,
         repurposer_modes: ['center_crop', 'smart_face_tracking'],
         voice_cloning: false,
-        resolution: '1080p'
+        resolution: '1080p',
+        all_presets: false
     },
     creator: {
         allowed_langs: ['all'], // 30+
         hinglish: true,
         repurposer_modes: ['center_crop', 'smart_face_tracking', 'podcast_stack', 'hormozi_captions'],
         voice_cloning: true,
-        resolution: '4k'
+        resolution: '4k',
+        all_presets: true
     },
     agency: {
         allowed_langs: ['all'],
         hinglish: true,
         repurposer_modes: ['all'],
         voice_cloning: true,
-        resolution: '4k'
+        resolution: '4k',
+        all_presets: true
     }
 };
 

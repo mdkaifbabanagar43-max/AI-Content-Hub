@@ -1,6 +1,7 @@
 import { toast } from 'sonner';
 
-export const handleAppError = (error: any, refundCallback?: () => void) => {
+export const handleAppError = (error: unknown, refundCallback?: () => void) => {
+    const err = error as any;
     // 1. Log for developer
     console.error("🔥 App Error:", error);
 
