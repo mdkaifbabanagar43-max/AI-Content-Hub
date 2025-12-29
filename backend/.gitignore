@@ -1,0 +1,21 @@
+# Exclude all JSONs by default (Secrets often JSON)
+service-account.json
+firebase-service-account.json
+*.json
+node_modules/
+
+# Exception: Configuration needed for dev
+!package.json
+!tsconfig.json
+!payload.json
+
+# Environment
+.env
+__pycache__/
+venv/
+.venv/
+
+# Media
+*.mp4
+*.mp3
+temp_*

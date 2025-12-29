@@ -1,0 +1,28 @@
+fastapi
+uvicorn
+python-multipart
+requests
+google-cloud-aiplatform
+numpy<2.0.0
+# --- MEDIA PROCESSING (STABLE) ---
+moviepy==1.0.3
+decorator==4.4.2
+proglog
+# --- AUDIO PROCESSING (STABLE) ---
+torch
+torchaudio
+demucs
+soundfile
+# --- REAL DATABASE (RESTORED) ---
+firebase-admin
+google-cloud-firestore
+
+google-cloud-texttospeech
+google-cloud-storage
+google-cloud-translate
+mediapipe==0.10.9
+opencv-python-headless
+imageio==2.31.2
+openai-whisper
+scenedetect
+protobuf>=3.20.3,<4.0.0

@@ -1,0 +1,45 @@
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0* Host ai-video-backend-1033839714188.us-central1.run.app:443 was resolved.
+* IPv6: 2600:1901:81d4:200::, 2600:1900:4241:200::, 2600:1900:4242:200::, 2600:1900:4243:200::, 2600:1900:4240:200::, 2600:1900:4244:200::, 2600:1900:4245:200::, 2600:1901:81d5:200::
+* IPv4: 34.143.76.2, 34.143.77.2, 34.143.78.2, 34.143.74.2, 34.143.79.2, 34.143.75.2, 34.143.73.2, 34.143.72.2
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0*   Trying [2600:1901:81d4:200::]:443...
+*   Trying 34.143.76.2:443...
+* schannel: disabled automatic use of client certificate
+* ALPN: curl offers http/1.1
+* ALPN: server accepted http/1.1
+* Established connection to ai-video-backend-1033839714188.us-central1.run.app (2600:1901:81d4:200:: port 443) from 2409:40f2:12e:80e7:fd74:99db:6a1c:770f port 51793 
+* using HTTP/1.x
+> OPTIONS /render-final HTTP/1.1
+> Host: ai-video-backend-1033839714188.us-central1.run.app
+> User-Agent: curl/8.16.0
+> Accept: */*
+> 
+* Request completely sent off
+* schannel: remote party requests renegotiation
+* schannel: renegotiating SSL/TLS connection
+* schannel: SSL/TLS connection renegotiated
+< HTTP/1.1 405 Method Not Allowed
+< allow: POST
+< content-type: application/json
+< x-cloud-trace-context: 5cd6e69bccd76201cd5f09241a5b036a;o=1
+< date: Thu, 18 Dec 2025 09:52:30 GMT
+< server: Google Frontend
+< Content-Length: 31
+< Alt-Svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
+< 
+{ [31 bytes data]
+100    31  100    31    0     0     33      0 --:--:-- --:--:-- --:--:--    34
+* Connection #0 to host ai-video-backend-1033839714188.us-central1.run.app:443 left intact
+{"detail":"Method Not Allowed"}* URL rejected: Port number was not a decimal number between 0 and 65535
+* closing connection #-1
+curl: (3) URL rejected: Port number was not a decimal number between 0 and 65535
+* URL rejected: Malformed input to a URL function
+* closing connection #-1
+curl: (3) URL rejected: Malformed input to a URL function
+* URL rejected: Malformed input to a URL function
+* closing connection #-1
+curl: (3) URL rejected: Malformed input to a URL function
+* URL rejected: Malformed input to a URL function
+* closing connection #-1
+curl: (3) URL rejected: Malformed input to a URL function

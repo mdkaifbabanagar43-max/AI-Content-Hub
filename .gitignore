@@ -1,0 +1,32 @@
+# Secrets
+service-account.json
+firebase-service-account.json
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!vercel.json
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Dependencies
+node_modules/
+__pycache__/
+venv/
+.venv/
+env/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Output / Temp
+*.mp4
+*.mp3
+*.wav
+temp_*
+output_*
+*.log

@@ -1,0 +1,16 @@
+__pycache__
+venv
+.env
+.git
+.gitignore
+*.mp4
+*.mp3
+temp_clips
+test_output
+
+# Exclude all JSONs to be safe
+*.json
+
+# BUT explicitly include the keys we need for the backend to run
+!service-account.json
+!firebase-service-account.json

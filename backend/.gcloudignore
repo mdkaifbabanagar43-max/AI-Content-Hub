@@ -1,0 +1,15 @@
+.git
+.gitignore
+__pycache__/
+venv/
+env/
+.env
+*.mp4
+*.mp3
+*.wav
+node_modules/
+README.md
+# Dockerfile should NOT be ignored as we rely on it for FFmpeg installation.
+# Dockerfile
+!service-account.json
+!firebase-service-account.json

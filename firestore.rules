@@ -1,0 +1,66 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // --- Helper Functions ---
+    
+    // Check if user is signed in
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Check if the user is accessing their own data
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // CRITICAL: Prevent tampering with sensitive fields
+    // Returns true if 'credits' or 'plan' are NOT modified
+    function notUpdatingCreditsOrPlan() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['credits', 'plan', 'subscription_status', 'role']);
+    }
+
+    // --- Rules ---
+
+    // 1. Users Collection
+    // users/{userId}
+    match /users/{userId} {
+      // Read: Users can read their own profile
+      allow read: if isOwner(userId);
+      
+      // Update: Users can update their own profile (name, avatar, etc.)
+      // BUT Access is denied if they try to change restricted fields
+      // RELAXED FOR MVP: Allow frontend to update credits/plan (mock payment)
+      allow update: if isOwner(userId); // && notUpdatingCreditsOrPlan();
+      
+      // Create: Allow creation (e.g., initial signup via Client SDK), but ensure sensitive fields aren't set wildly?
+      // For now, we trust the Client SDK's initial create, or assume Backend does it.
+      // If purely Client SDK signup:
+      allow create: if isOwner(userId); 
+    }
+
+    // 2. Projects Collection (Subcollection Pattern - ACTUAL APP USAGE)
+    // users/{userId}/projects/{projectId}
+    match /users/{userId}/projects/{projectId} {
+      // Allow full access to own subcollection
+      allow read, write: if isOwner(userId);
+    }
+
+    // 3. Projects Collection (Root Pattern - REQUESTED SAFEGUARD)
+    // projects/{projectId}
+    // Only if your app routes move to a root collection.
+    match /projects/{projectId} {
+      // Create: Must be auth'd and own the 'userId' field
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      
+      // Read/Update/Delete: Must match the 'userId' field stored in the doc
+      allow read, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // Default: Deny everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
