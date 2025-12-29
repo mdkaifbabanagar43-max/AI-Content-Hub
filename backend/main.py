@@ -158,17 +158,10 @@ def increment_active_job_count(user_id: str):
 def decrement_active_job_count(user_id: str):
     pass
 
-# Mocking these for now unless explicit code provided
-def complete_job_and_deduct(*args, **kwargs): pass
-def upload_file(*args, **kwargs): return "https://mock-url.com/video.mp4"
-def save_project(*args, **kwargs): return "mock_project_id"
-def create_job(*args, **kwargs): return "mock_job_id"
-def update_job_status(*args, **kwargs): pass
-def init_user_if_needed(*args): pass
-def get_user_profile(*args): return {'plan': 'agency', 'credits': 9999} # Mock rich user
-def deduct_credits(*args): return True
+# Real imports are used from firebase_utils above.
+# No mocks needed for production logic.
 from config import PLAN_CAPABILITIES
-def validate_feature_access(*args): return {}, PLAN_CAPABILITIES['agency']
+from permissions import validate_feature_access
 
 
 
@@ -209,7 +202,9 @@ app.add_middleware(
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "https://ai-video-saas.web.app",
-        "https://ai-video-saas.firebaseapp.com"
+        "https://ai-video-saas.firebaseapp.com",
+        "https://ai-content-hub-eight.vercel.app",
+        "https://ai-content-hub-ten.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -844,7 +839,8 @@ def render_final(request: FinalRenderRequest, user_id: str = Depends(verify_toke
     # --- 2. SOFT CREDIT CHECK (Balance Only) ---
     current_balance = profile_data.get('credits', 0) if profile_data else 0
     # Cost for Idea Studio Script is typically 10 credits (from config, hardcoded check)
-    ESTIMATED_COST = 10 
+    # Cost for Idea Studio Script is 5 credits (synced with config and frontend)
+    ESTIMATED_COST = 5 
     if current_balance < ESTIMATED_COST:
          update_job_status(user_id, job_id, "failed_funds")
          raise HTTPException(status_code=402, detail=f"Insufficient Credits. Need {ESTIMATED_COST}, Have {current_balance}")
