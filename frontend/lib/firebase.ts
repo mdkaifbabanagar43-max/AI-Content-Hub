@@ -20,7 +20,6 @@ if (!firebaseConfig.apiKey) {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 // Use long polling to avoid timeout issues in some environments
-import { initializeFirestore } from "firebase/firestore";
 const db = initializeFirestore(app, {
     experimentalForceLongPolling: true,
 });
