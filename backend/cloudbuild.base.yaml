@@ -1,0 +1,11 @@
+# Cloud Build configuration for building the base image
+# Run: gcloud builds submit --config cloudbuild.base.yaml .
+
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/shortcutai-backend/ai-video-base:v1', '-f', 'Dockerfile.base', '.']
+
+images:
+  - 'gcr.io/shortcutai-backend/ai-video-base:v1'
+
+timeout: '3600s'  # 1 hour timeout for heavy ML dependencies

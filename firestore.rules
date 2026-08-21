@@ -1,0 +1,86 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // --- Helper Functions ---
+    
+    // Check if user is signed in
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Check if the user is accessing their own data
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // CRITICAL: Prevent tampering with sensitive/privileged fields
+    // Returns true if server-controlled fields are NOT modified
+    function notUpdatingProtectedFields() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'credits', 
+        'plan', 
+        'subscription_status', 
+        'role', 
+        'billing', 
+        'custom_voices',
+        'stripe_customer_id',
+        'subscription_id'
+      ]);
+    }
+
+    // Validate safe initial creation from Client SDK if applicable
+    function hasSafeInitialFields() {
+      return !request.resource.data.keys().hasAny([
+        'role', 
+        'subscription_status', 
+        'billing',
+        'stripe_customer_id',
+        'subscription_id'
+      ]) && (
+        !('credits' in request.resource.data) || request.resource.data.credits == 0 || request.resource.data.credits == 10
+      ) && (
+        !('plan' in request.resource.data) || request.resource.data.plan == 'starter' || request.resource.data.plan == 'free'
+      );
+    }
+
+    // --- Rules ---
+
+    // 1. Users Collection
+    // users/{userId}
+    match /users/{userId} {
+      // Read: Users can read their own profile
+      allow read: if isOwner(userId);
+      
+      // Update: Users can update non-privileged profile data (display name, avatar, brand kit)
+      // Server-controlled fields (credits, plan, role, billing) CANNOT be modified by client
+      allow update: if isOwner(userId) && notUpdatingProtectedFields();
+      
+      // Create: Allow initial user doc create only with default unprivileged values
+      allow create: if isOwner(userId) && hasSafeInitialFields();
+      
+      // Delete: Prevent client-side user document deletion (must go through account deletion API)
+      allow delete: if false;
+    }
+
+    // 2. Projects Collection (Subcollection Pattern - ACTUAL APP USAGE)
+    // users/{userId}/projects/{projectId}
+    match /users/{userId}/projects/{projectId} {
+      // Allow full access to own subcollection
+      allow read, write: if isOwner(userId);
+    }
+
+    // 3. Projects Collection (Root Pattern - SAFEGUARD)
+    // projects/{projectId}
+    match /projects/{projectId} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // Default: Deny everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

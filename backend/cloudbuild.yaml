@@ -1,0 +1,28 @@
+steps:
+  # 1. Attempt to pull the previous image to use layers for caching
+  # We use '|| exit 0' so the build doesn't fail if it's the very first run (no image yet).
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args: ['-c', 'docker pull $_IMAGE_NAME:latest || exit 0']
+
+  # 2. Build the container image using the pulled image as a cache source
+  # This prevents re-running 'apt-get install' and 'pip install' if requirements haven't changed.
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-t', '$_IMAGE_NAME:latest',
+      '--cache-from', '$_IMAGE_NAME:latest',
+      '.'
+    ]
+
+  # 3. Push the newly built image to the registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '$_IMAGE_NAME:latest']
+
+# Define the image reference to be pushed
+images:
+  - '$_IMAGE_NAME:latest'
+
+# Default substitution (can be overridden by CLI)
+substitutions:
+  _IMAGE_NAME: gcr.io/shortcutai-backend/ai-video-backend

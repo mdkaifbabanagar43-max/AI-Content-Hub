@@ -1,0 +1,50 @@
+# ============================================
+# BASE IMAGE FOR AI VIDEO SAAS
+# ============================================
+# This Dockerfile creates a base image with all heavy ML dependencies
+# pre-installed. Build this ONCE, push to GCR, then use in main Dockerfile.
+#
+# BUILD COMMAND (run once, takes ~15-20 min):
+# gcloud builds submit --tag gcr.io/shortcutai-backend/ai-video-base:v1 -f Dockerfile.base .
+#
+# After building, update Dockerfile to use: FROM gcr.io/shortcutai-backend/ai-video-base:v1
+# ============================================
+
+FROM python:3.10-slim
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    libsndfile1 \
+    imagemagick \
+    libgl1 \
+    libegl1 \
+    libglib2.0-0 \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Fix ImageMagick policy
+RUN if [ -f /etc/ImageMagick-6/policy.xml ]; then \
+    sed -i 's/none/read,write/g' /etc/ImageMagick-6/policy.xml && \
+    sed -i '/<policy domain="path" rights="none" pattern="@\*"/d' /etc/ImageMagick-6/policy.xml; \
+    fi && \
+    if [ -f /etc/ImageMagick-7/policy.xml ]; then \
+    sed -i 's/none/read,write/g' /etc/ImageMagick-7/policy.xml && \
+    sed -i '/<policy domain="path" rights="none" pattern="@\*"/d' /etc/ImageMagick-7/policy.xml; \
+    fi
+
+WORKDIR /app
+
+# Install HEAVY dependencies (this is cached in the base image)
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Pre-download Whisper model to avoid runtime download
+RUN python -c "import whisper; whisper.load_model('base')" || true
+
+# Set a marker to verify base image is being used
+ENV AI_VIDEO_BASE_IMAGE=v1
