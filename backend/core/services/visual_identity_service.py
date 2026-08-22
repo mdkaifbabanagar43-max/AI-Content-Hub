@@ -51,10 +51,24 @@ class VisualIdentityService:
                 or not existing_art
                 or art_style.lower().strip() == existing_art.lower().strip()
             )
-            if styles_match:
+            
+            # Check if character design matches
+            existing_char_design = ""
+            if existing.characters:
+                first_char = next(iter(existing.characters.values()))
+                existing_char_design = first_char.visual_descriptor
+            
+            # Since visual_descriptor has art_style embedded, we just check if the new design text is in it
+            char_design_match = (
+                not character_design
+                or not existing_char_design
+                or character_design.lower().strip() in existing_char_design.lower().strip()
+            )
+
+            if styles_match and char_design_match:
                 return existing
             else:
-                print(f"[VIP] Existing VIP art_style '{existing_art}' != requested '{art_style}', generating new VIP")
+                print(f"[VIP] Existing VIP doesn't match requested style/design. Generating new VIP.")
 
         pack_id = f"vip_{uuid.uuid4().hex[:8]}"
         treatment = VisualTreatment(
