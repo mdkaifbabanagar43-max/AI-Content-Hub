@@ -12,6 +12,10 @@ from core.models.clone_blueprint import CloneBlueprint
 from core.models.transformation import ProductionTransformationRequest
 from core.services.bible_loader import ProjectBibleLoader
 from core.repositories.blueprint_repo import BlueprintRepository
+from core.services.originality_validator import (
+    validate_blueprint_originality,
+    OriginalityValidationException
+)
 from services.ai_service import get_gemini_client
 
 def _clean_and_parse_json(raw_text: str) -> dict:
@@ -126,18 +130,24 @@ class ProductionDirector:
         cost_video = veo_attempts * 0.50
         blueprint.estimated_cost_usd = round(cost_audio + cost_video, 2)
 
-    def _validate_entities(self, blueprint: ProductionBlueprint, context: GenerationContext) -> List[str]:
+    def _validate_entities(self, blueprint: ProductionBlueprint, context: GenerationContext, allow_new_chars: bool = False, allow_new_locs: bool = False) -> List[str]:
         """
         Server-side independent validation of all Bible IDs and project scoping.
         Never trusts the LLM.
         """
         errors = []
         bibles = self.bible_loader.load_all_bibles(context)
-        valid_chars = {b.character_id for b in bibles.get("characters", [])}
-        valid_locs = {b.location_id for b in bibles.get("locations", [])}
-        valid_props = {b.prop_id for b in bibles.get("props", [])}
-        valid_voices = {b.voice_id for b in bibles.get("voices", [])} | {"default_voice", "default", "voice_default", "none", None}
-        valid_styles = {b.style_id for b in bibles.get("styles", [])}
+        custom_chars = {b.character_id for b in bibles.get("characters", [])}
+        custom_locs = {b.location_id for b in bibles.get("locations", [])}
+        custom_props = {b.prop_id for b in bibles.get("props", [])}
+        custom_voices = {b.voice_id for b in bibles.get("voices", [])}
+        custom_styles = {b.style_id for b in bibles.get("styles", [])}
+
+        valid_chars = custom_chars
+        valid_locs = custom_locs
+        valid_props = custom_props
+        valid_styles = custom_styles
+        valid_voices = (custom_voices | {"default_voice", "default", "voice_default", "none", None}) if custom_voices else set()
         all_valid_entity_ids = valid_chars | valid_locs | valid_props
         
         def _check_missing_asset(entity_id: Optional[str], default_scene_id: str = "global"):
@@ -151,24 +161,24 @@ class ProductionDirector:
         # 1. Blueprint-level entity checks
         for c_id in blueprint.required_character_ids:
             _check_missing_asset(c_id)
-            if c_id not in valid_chars:
+            if not allow_new_chars and valid_chars and c_id not in valid_chars:
                 errors.append(f"Missing character: {c_id}")
         for l_id in blueprint.required_location_ids:
             _check_missing_asset(l_id)
-            if l_id not in valid_locs:
+            if not allow_new_locs and valid_locs and l_id not in valid_locs:
                 errors.append(f"Missing location: {l_id}")
         for p_id in blueprint.required_prop_ids:
             _check_missing_asset(p_id)
-            if p_id not in valid_props:
+            if valid_props and p_id not in valid_props:
                 errors.append(f"Missing prop: {p_id}")
                 
         if blueprint.visual_style_id:
             _check_missing_asset(blueprint.visual_style_id)
-            if blueprint.visual_style_id not in valid_styles:
+            if valid_styles and blueprint.visual_style_id not in valid_styles:
                 errors.append(f"Missing style: {blueprint.visual_style_id}")
             
         if blueprint.audio_strategy and blueprint.audio_strategy.primary_voice_id:
-            if blueprint.audio_strategy.primary_voice_id not in valid_voices:
+            if valid_voices and blueprint.audio_strategy.primary_voice_id not in valid_voices:
                 errors.append(f"Missing primary voice: {blueprint.audio_strategy.primary_voice_id}")
             
         # 2. Scene-level entity & duration checks
@@ -183,32 +193,32 @@ class ProductionDirector:
                 
             for c_id in s.character_ids:
                 _check_missing_asset(c_id, s.scene_id)
-                if c_id not in valid_chars:
+                if not allow_new_chars and valid_chars and c_id not in valid_chars:
                     errors.append(f"Scene {s.scene_id} character missing: {c_id}")
                     
             if s.location_id:
                 _check_missing_asset(s.location_id, s.scene_id)
-                if s.location_id not in valid_locs:
+                if not allow_new_locs and valid_locs and s.location_id not in valid_locs:
                     errors.append(f"Scene {s.scene_id} location missing: {s.location_id}")
                 
             for p_id in s.prop_ids:
                 _check_missing_asset(p_id, s.scene_id)
-                if p_id not in valid_props:
+                if valid_props and p_id not in valid_props:
                     errors.append(f"Scene {s.scene_id} prop missing: {p_id}")
                     
             if s.primary_reference_asset_id:
                 _check_missing_asset(s.primary_reference_asset_id, s.scene_id)
-                if s.primary_reference_asset_id not in all_valid_entity_ids:
+                if not allow_new_chars and not allow_new_locs and all_valid_entity_ids and s.primary_reference_asset_id not in all_valid_entity_ids:
                     errors.append(f"Scene {s.scene_id} primary reference asset missing: {s.primary_reference_asset_id}")
                 
             for req in s.continuity_requirements:
-                if req.asset_id not in all_valid_entity_ids:
+                if not allow_new_chars and not allow_new_locs and all_valid_entity_ids and req.asset_id not in all_valid_entity_ids:
                     errors.append(f"Scene {s.scene_id} continuity asset missing: {req.asset_id}")
             
             for d in s.dialogue:
-                if d.character_id not in valid_chars:
+                if not allow_new_chars and valid_chars and d.character_id not in valid_chars:
                     errors.append(f"Dialogue character missing: {d.character_id}")
-                if d.voice_id not in valid_voices:
+                if valid_voices and d.voice_id not in valid_voices:
                     errors.append(f"Dialogue voice missing: {d.voice_id}")
                 if d.estimated_duration_seconds <= 0:
                     errors.append(f"Dialogue in scene {s.scene_id} has non-positive duration")
@@ -328,46 +338,133 @@ class ProductionDirector:
             scene_count=scenes_cnt,
             requested_character_count=char_cnt
         )
-        
+
+        user_topic = request.topic or "Fresh original story"
+        story_change = request.story_change or "Invent a new, engaging, humorous or dramatic narrative"
+        tone = request.tone or "Engaging"
+        language = request.language or "English"
+
+        # User-Controlled Preservation Directives
+        preserve_style = request.preserve_visual_style
+        preserve_chars = request.preserve_characters
+        preserve_env = request.preserve_environment
+        preserve_pacing = request.preserve_camera_pacing
+        preserve_trend = request.preserve_trend_structure or (request.clone_mode == "trend_inspired")
+
+        # 1. Visual Style DNA
+        visual_style = clone_blueprint.visual_style_profile
+        art_style = getattr(visual_style, 'art_style', "3D digital animation") if visual_style else "3D digital animation"
+        lighting = getattr(visual_style, 'lighting_summary', None) or getattr(visual_style, 'lighting', "Cinematic lighting") if visual_style else "Cinematic lighting"
+        color_palette = getattr(visual_style, 'color_tone', None) or getattr(visual_style, 'color_palette', "Vibrant") if visual_style else "Vibrant"
+        render_language = getattr(visual_style, 'visual_style_summary', None) or getattr(visual_style, 'render_language', "3D digital render") if visual_style else "3D digital render"
+
+        if preserve_style:
+            style_instruction = f"""
+        SOURCE VISUAL STYLE (MANDATORY TO PRESERVE):
+        - Art Style: {art_style}
+        - Lighting & Ambiance: {lighting}
+        - Color Palette: {color_palette}
+        - Render Language: {render_language}
+        - Aspect Ratio: {clone_blueprint.aspect_ratio}
+        """
+        else:
+            style_instruction = f"""
+        VISUAL STYLE POLICY:
+        - DO NOT preserve the source video's visual art style.
+        - INVENT a fresh, fitting visual art style tailored specifically to the new story topic ({user_topic}).
+        """
+
+        # 2. Character DNA
+        if preserve_chars:
+            character_design = getattr(visual_style, 'character_design', "Stylized characters") if visual_style else "Stylized characters"
+            char_instruction = f"""
+        SOURCE CHARACTERS (PRESERVE EXACT APPEARANCE):
+        - Character Visual Design: {character_design}
+        - Keep the exact physical appearance and character designs from source.
+        """
+        else:
+            char_instruction = f"""
+        CHARACTER POLICY (DO NOT REUSE SOURCE CHARACTERS):
+        - DO NOT reuse source character identities, descriptions, or source character IDs.
+        - INVENT brand new original characters appropriate for the new story ({user_topic}).
+        - Use new character IDs like 'char_lead_1', 'char_secondary_1'.
+        """
+
+        # 3. Environment DNA
+        if preserve_env:
+            env_instruction = """
+        ENVIRONMENT (PRESERVE SOURCE WORLD):
+        - Keep the general world environment and aesthetic from the source video.
+        """
+        else:
+            env_instruction = f"""
+        ENVIRONMENT POLICY:
+        - Create NEW settings, locations, and backgrounds appropriate for the new story ({user_topic}).
+        - Do not reuse source specific locations.
+        """
+
+        # 4. Pacing & Camera DNA
+        if preserve_pacing:
+            pacing = clone_blueprint.pacing_profile
+            rhythm = getattr(pacing, 'rhythm_description', "Dynamic narrative pacing") if pacing else "Dynamic narrative pacing"
+            avg_shot_dur = getattr(pacing, 'average_shot_duration', 4.0) if pacing else 4.0
+            intensity = getattr(pacing, 'overall_intensity', "Medium") if pacing else "Medium"
+            pacing_instruction = f"""
+        PACING & CAMERA LANGUAGE (PRESERVE RHYTHM):
+        - Pacing Rhythm: {rhythm} (Average shot duration: {avg_shot_dur:.1f}s, Intensity: {intensity})
+        - Match the source pacing rhythm and cinematic camera motion styles.
+        """
+        else:
+            pacing_instruction = f"""
+        PACING & CAMERA LANGUAGE:
+        - Use standard cinematic pacing tailored for a short-form video of ~{target_dur}s.
+        """
+
+        trend_instruction = ""
+        if preserve_trend:
+            trend_instruction = """
+        TREND INSPIRED HOOK & RETENTION:
+        - Apply high-retention viral pacing: explosive 0-3s hook, rapid escalation curve, and sharp punchy climax.
+        """
+
         prompt = f"""
-        You are an AI Production Director transforming a SOURCE STRUCTURAL BLUEPRINT into a NEW ORIGINAL PRODUCTION.
+        You are an AI Production Director creating a NEW ORIGINAL STORYBOARD based on USER CREATIVE INTENT and USER PRESERVATION CHOICES.
         
-        USER TRANSFORMATION REQUEST:
-        - Topic: {request.topic}
-        - Story Change: {request.story_change}
-        - Target Duration: {request.target_duration_seconds}s
-        - Tone: {request.tone}
-        - Language: {request.language}
+        CRITICAL NARRATIVE SEPARATION DIRECTIVE:
+        - DO NOT copy, summarize, or reproduce the source video's plot, dialogue, action sequence, scene order, or punchline.
+        - CREATE a materially DIFFERENT narrative driven entirely by the User Transformation Request below.
+        
+        USER CREATIVE INTENT (PRIMARY NARRATIVE DRIVER):
+        - New Story Topic: {user_topic}
+        - New Story Action / Changes: {story_change}
+        - Tone / Mood: {tone}
+        - Language: {language}
+        - Target Duration: {target_dur}s
+        
+        {style_instruction}
+        {char_instruction}
+        {env_instruction}
+        {pacing_instruction}
+        {trend_instruction}
         
         REQUESTED ASSETS (You must use these if provided, or select appropriately from Project Context):
-        - Style: {request.requested_style_id}
-        - Characters: {request.requested_character_ids}
-        - Voices: {request.requested_voice_id}
-        - Locations: {request.requested_location_ids}
-        - Props: {request.requested_prop_ids}
-        
-        PRESERVATION FLAGS:
-        - Preserve Structure: {request.preserve_structure}
-        - Preserve Pacing: {request.preserve_pacing}
-        - Preserve Camera Language: {request.preserve_camera_language}
-        - Preserve Emotional Arc: {request.preserve_emotional_arc}
+        - Style ID: {request.requested_style_id}
+        - Character IDs: {request.requested_character_ids}
+        - Voice ID: {request.requested_voice_id}
+        - Location IDs: {request.requested_location_ids}
+        - Prop IDs: {request.requested_prop_ids}
         
         {planning_context}
         
-        SOURCE BLUEPRINT STRUCTURE:
-        {clone_blueprint.model_dump_json(indent=2)}
-        
         INSTRUCTIONS:
-        1. Preserve the narrative function, pacing profile, emotional progression, and camera language of the source blueprint.
-        2. Transform the story details, dialogue, characters, locations, and props to match the User Transformation Request.
-        3. You MUST use ONLY the supplied Project Bible IDs for characters, locations, props, voices, and styles. NEVER invent standard entity IDs like CHAR_999.
-        4. If a required asset (style, character, etc.) from the Source Blueprint is missing from the Project Context, YOU MUST CHOOSE THE CLOSEST MATCHING ASSET from the Project Context. If there are no assets of that type available in the Project Context at all, you MUST omit the field (set to null or empty list). DO NOT use the MISSING_ASSET string.
-        5. Generate new dialogue matching the narrative purpose and approximate timing.
-        6. Adjust shot durations proportionally if the Target Duration differs from the Source Duration. Do not exceed the target duration.
-        7. Ensure all scene actions, visual descriptions, and character actions are completely safe, family-friendly, and adhere to AI safety guidelines (avoiding any sensitive terms, violence, or dangerous actions that could trigger video generation safety filters).
-        8. SHOT CONSOLIDATION & CONTINUITY: Consolidate short, fragmented micro-beats (< 3 seconds) occurring in the same setting into cohesive, continuous narrative scenes (4–8 seconds each). Aim for 3 to 6 rich, continuous scenes rather than dozens of 1-second cuts. This preserves character presence, room lighting, and narrative immersion while keeping video generation fast and unified.
-        9. LOCATION CONTINUITY: Unless the user explicitly requests a location change, preserve the source visual world setting as described in the Source Blueprint. Do NOT arbitrarily invent unrelated locations that differ from the source video's environment.
-        10. CHARACTER IDENTITY AS HARD CONSTRAINT: Preserve the physical visual identity of the characters exactly as described in the Source Blueprint's visual style and character design fields across all scenes. Do NOT alter their species, form factor, or visual aesthetic unless the user explicitly requests it.
+        1. CREATE A BRAND NEW STORY: Invent new character motivations, new conflict, new actions, and new comedic/dramatic resolution matching the User Creative Intent. Do NOT reuse the source video's story events.
+        2. RESPECT PRESERVATION POLICIES:
+           - If Characters are preserved, keep source character designs. If NOT preserved, invent brand new characters.
+           - If Style is preserved, keep authoritative art style. If NOT preserved, create a fitting new style.
+        3. Assign appropriate entity IDs (Characters, locations, props, voices). If no assets exist in Project Context, use clean IDs like 'char_lead_1', 'default_voice'. DO NOT use the MISSING_ASSET string.
+        4. Generate new, original dialogue matching the new storyline in {language}.
+        5. SHOT CONSOLIDATION & PACING: Consolidate into 3 to 5 continuous, cohesive scenes (3–8 seconds each) totaling approximately {target_dur}s.
+        6. Ensure all scene actions, visual descriptions, and character actions are completely safe, family-friendly, and adhere to AI safety guidelines.
         """
         
         max_retries = 2
@@ -376,7 +473,7 @@ class ProductionDirector:
         for attempt in range(max_retries + 1):
             try:
                 if attempt > 0:
-                    retry_prompt = prompt + f"\n\nYOUR PREVIOUS ATTEMPT FAILED WITH ERROR:\n{last_error}\nPlease fix the issues and try again."
+                    retry_prompt = prompt + f"\n\nYOUR PREVIOUS ATTEMPT FAILED WITH ERROR:\n{last_error}\nPlease fix the issues and ensure the story is completely new and original."
                 else:
                     retry_prompt = prompt
                 
@@ -384,21 +481,49 @@ class ProductionDirector:
                 blueprint_data = _clean_and_parse_json(raw_json)
                 blueprint = ProductionBlueprint(**blueprint_data)
                 
-                # Bind ownership and lineage
+                # Bind ownership, lineage, and preservation profile
                 blueprint.project_id = self.project_id
                 if not blueprint.blueprint_id:
                     blueprint.blueprint_id = f"pb_{uuid.uuid4().hex[:8]}"
                 blueprint.source_clone_blueprint_id = clone_blueprint.clone_blueprint_id
                 blueprint.source_clone_blueprint_version = clone_blueprint.clone_blueprint_version
-                blueprint.visual_style_profile = clone_blueprint.visual_style_profile
-                if clone_blueprint.visual_style_profile:
-                    blueprint.authoritative_art_style = clone_blueprint.visual_style_profile.art_style
-                    blueprint.authoritative_character_design = clone_blueprint.visual_style_profile.character_design
                 
-                # Validate
-                entity_errors = self._validate_entities(blueprint, context)
+                blueprint.clone_mode = request.clone_mode
+                blueprint.preserve_visual_style = request.preserve_visual_style
+                blueprint.preserve_characters = request.preserve_characters
+                blueprint.preserve_environment = request.preserve_environment
+                blueprint.preserve_camera_pacing = request.preserve_camera_pacing
+                blueprint.preserve_trend_structure = request.preserve_trend_structure
+                
+                if request.preserve_visual_style:
+                    blueprint.visual_style_profile = clone_blueprint.visual_style_profile
+                    if clone_blueprint.visual_style_profile:
+                        blueprint.authoritative_art_style = clone_blueprint.visual_style_profile.art_style
+                else:
+                    blueprint.authoritative_art_style = blueprint.concept
+                
+                if request.preserve_characters:
+                    if clone_blueprint.visual_style_profile:
+                        blueprint.authoritative_character_design = clone_blueprint.visual_style_profile.character_design
+                else:
+                    blueprint.authoritative_character_design = "Original characters created for story"
+                
+                # Validate entities (allow new characters/locations if not preserved)
+                entity_errors = self._validate_entities(
+                    blueprint, context, 
+                    allow_new_chars=(not request.preserve_characters),
+                    allow_new_locs=(not request.preserve_environment)
+                )
                 if entity_errors:
                     raise BlueprintValidationException("Entity validation failed.", errors=entity_errors)
+                
+                # Validate narrative originality & preservation compliance
+                validate_blueprint_originality(
+                    clone_blueprint, 
+                    blueprint,
+                    preserve_characters=request.preserve_characters,
+                    preserve_environment=request.preserve_environment
+                )
                 
                 self._estimate_costs(blueprint)
                 
@@ -412,6 +537,9 @@ class ProductionDirector:
             except MissingAssetException:
                 # Re-raise to abort immediately, do not retry missing assets
                 raise
+            except OriginalityValidationException as orig_err:
+                last_error = str(orig_err)
+                print(f"Originality Validation failed on attempt {attempt}: {last_error}")
             except (ValidationError, json.JSONDecodeError, ValueError) as pyd_err:
                 last_error = str(pyd_err)
                 print(f"Schema / JSON Validation failed on attempt {attempt}: {last_error}")

@@ -9,8 +9,24 @@ import { Toaster } from 'sonner';
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "CloneFrame - AI Video Creation & Cloning",
-  description: "Clone the visual DNA, characters, story structure and style — then create a new story. AI scripts, voiceovers, and auto-edited shorts.",
+  title: "CloneFrame - Automated AI Video Pipeline for B2B Agencies",
+  description: "Turn concepts into ready-to-publish short-form videos in seconds. Orchestrating Gemini 2.0, Veo, and ElevenLabs into one unified API.",
+  keywords: [
+    "AI Video Pipeline",
+    "B2B Video Automation",
+    "Gemini 2.0 Video",
+    "Google Veo",
+    "ElevenLabs API",
+    "Social Media Marketing Agencies",
+    "Google Cloud AI"
+  ],
+  authors: [{ name: "Md Kaif Babanagar" }],
+  openGraph: {
+    title: "CloneFrame - Automated AI Video Pipeline for B2B Agencies",
+    description: "Turn concepts into ready-to-publish short-form videos in seconds. Orchestrating Gemini 2.0, Veo, and ElevenLabs into one unified API.",
+    type: "website",
+    siteName: "CloneFrame"
+  }
 };
 
 export default function RootLayout({

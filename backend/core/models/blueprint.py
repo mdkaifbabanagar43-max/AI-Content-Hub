@@ -109,8 +109,15 @@ class ProductionBlueprint(BaseModel):
     audio_strategy: Optional[AudioStrategy] = None
     quality_strategy: Optional[QualityStrategy] = None
     generation_strategy: Optional[GenerationStrategy] = None
+    # Preservation Profile Selections
+    clone_mode: Optional[str] = None
+    preserve_visual_style: Optional[bool] = None
+    preserve_characters: Optional[bool] = None
+    preserve_environment: Optional[bool] = None
+    preserve_camera_pacing: Optional[bool] = None
+    preserve_trend_structure: Optional[bool] = None
     scenes: List[SceneBlueprint] = Field(default_factory=list)
-    
+
     # Unified LipSync Policy
     use_lip_sync: Optional[bool] = None
     allow_lip_sync_fallback: Optional[bool] = None

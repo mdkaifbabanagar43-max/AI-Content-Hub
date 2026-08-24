@@ -266,7 +266,8 @@ def test_production_blueprint_identity_propagation():
     req = ProductionTransformationRequest(
         topic="Role reversed locks",
         story_change="None",
-        target_duration_seconds=19.12
+        target_duration_seconds=19.12,
+        preserve_characters=True
     )
     
     mock_pb = ProductionBlueprint(

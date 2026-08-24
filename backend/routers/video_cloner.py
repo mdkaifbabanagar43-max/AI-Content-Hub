@@ -485,7 +485,7 @@ def run_production_job(user_id: str, project_id: str, blueprint_id: str):
             allow_lip_sync_fb = getattr(scene, "allow_lip_sync_fallback", None)
             if allow_lip_sync_fb is None:
                 allow_lip_sync_fb = getattr(bp, "allow_lip_sync_fallback", None)
-            allow_lip_sync_fb = bool(allow_lip_sync_fb) if allow_lip_sync_fb is not None else False
+            allow_lip_sync_fb = bool(allow_lip_sync_fb) if allow_lip_sync_fb is not None else True
 
             req = CanonicalGenerationRequest(
                 user_id=user_id,

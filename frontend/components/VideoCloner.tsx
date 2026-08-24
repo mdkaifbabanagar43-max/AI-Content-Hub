@@ -37,12 +37,44 @@ export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string)
     const [cloneBlueprint, setCloneBlueprint] = useState<any>(null);
     const [visualIdentityPack, setVisualIdentityPack] = useState<any>(null);
     
-    // Transform states
+    // Transform & Preservation states
     const [customPrompt, setCustomPrompt] = useState<string>('');
     const [targetLanguage, setTargetLanguage] = useState<string>('Hinglish / Hindi');
     const [targetDuration, setTargetDuration] = useState<number>(30); // Preset ~30s
     const [productionBlueprint, setProductionBlueprint] = useState<any>(null);
     const [isTransforming, setIsTransforming] = useState(false);
+    
+    // User Preservation Options (Authoritative)
+    const [preserveVisualStyle, setPreserveVisualStyle] = useState<boolean>(true);
+    const [preserveCharacters, setPreserveCharacters] = useState<boolean>(false);
+    const [preserveEnvironment, setPreserveEnvironment] = useState<boolean>(false);
+    const [preserveCameraPacing, setPreserveCameraPacing] = useState<boolean>(true);
+    const [cloneMode, setCloneMode] = useState<string>('style_only');
+
+    const applyPreset = (preset: 'style_only' | 'characters_and_style' | 'full_visual_clone' | 'trend_inspired') => {
+        setCloneMode(preset);
+        if (preset === 'style_only') {
+            setPreserveVisualStyle(true);
+            setPreserveCharacters(false);
+            setPreserveEnvironment(false);
+            setPreserveCameraPacing(true);
+        } else if (preset === 'characters_and_style') {
+            setPreserveVisualStyle(true);
+            setPreserveCharacters(true);
+            setPreserveEnvironment(false);
+            setPreserveCameraPacing(true);
+        } else if (preset === 'full_visual_clone') {
+            setPreserveVisualStyle(true);
+            setPreserveCharacters(true);
+            setPreserveEnvironment(true);
+            setPreserveCameraPacing(true);
+        } else if (preset === 'trend_inspired') {
+            setPreserveVisualStyle(false);
+            setPreserveCharacters(false);
+            setPreserveEnvironment(false);
+            setPreserveCameraPacing(true);
+        }
+    };
     
     // Lip-sync mode: false = Mode A (Voiceover), true = Mode B (Talking Character)
     const [useLipSync, setUseLipSync] = useState<boolean>(false);
@@ -178,19 +210,34 @@ export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string)
         setIsTransforming(true);
         try {
             const headers = await getAuthHeaders();
+            const storyTopic = customPrompt || `Viral ${selectedNiche} concept`;
             const res = await fetch(`${API_BASE_URL}/projects/${projectId}/clone-blueprints/${cloneBlueprint.clone_blueprint_id}/transform`, {
                 method: 'POST',
                 headers: { ...headers, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    target_topic: customPrompt || `Viral ${selectedNiche} concept`,
+                    topic: storyTopic,
+                    target_topic: storyTopic,
+                    story_change: customPrompt ? `Create a new original story about: ${customPrompt}` : undefined,
+                    niche: selectedNiche,
                     target_niche: selectedNiche,
+                    language: targetLanguage,
                     target_language: targetLanguage,
                     target_duration_seconds: targetDuration,
-                    humor_level: "HIGH"
+                    tone: "High Energy & Humorous",
+                    preserve_visual_style: preserveVisualStyle,
+                    preserve_characters: preserveCharacters,
+                    preserve_environment: preserveEnvironment,
+                    preserve_camera_pacing: preserveCameraPacing,
+                    preserve_trend_structure: cloneMode === 'trend_inspired',
+                    clone_mode: cloneMode
                 })
             });
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.detail || `Server returned ${res.status}: Transformation failed.`);
+            }
             const pbData = await res.json();
-            if (pbData.blueprint_id) {
+            if (pbData && pbData.blueprint_id) {
                 // Ensure lip sync mode is applied
                 pbData.use_lip_sync = useLipSync;
                 setProductionBlueprint(pbData);
@@ -217,7 +264,7 @@ export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string)
 
             // Set lip-sync selection on blueprint
             productionBlueprint.use_lip_sync = useLipSync;
-            productionBlueprint.allow_lip_sync_fallback = !useLipSync;
+            productionBlueprint.allow_lip_sync_fallback = true;
 
             // Approve blueprint
             await fetch(`${API_BASE_URL}/projects/${projectId}/production-blueprints/${productionBlueprint.blueprint_id}/approve`, {
@@ -281,7 +328,7 @@ export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string)
                         </span>
                     </div>
                     <p className="text-sm text-white/50">
-                        Upload a source video, lock its visual identity with multi-angle character sheets, and generate a new viral narrative.
+                        Clone the visual DNA. Create something new.
                     </p>
                 </div>
 
@@ -293,23 +340,30 @@ export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string)
                         { num: 3, label: 'Transform' },
                         { num: 4, label: 'Storyboard' },
                         { num: 5, label: 'Render' },
-                    ].map(s => (
-                        <button
+                    ].map((s) => (
+                        <div
                             key={s.num}
-                            onClick={() => s.num < step && setStep(s.num)}
-                            disabled={s.num > step}
                             className={cn(
-                                "px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5",
-                                step === s.num 
-                                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"
+                                "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+                                step === s.num
+                                    ? "bg-indigo-600/20 text-indigo-400 border border-indigo-500/30"
                                     : step > s.num
-                                    ? "text-white/80 hover:bg-white/[0.05]"
-                                    : "text-white/30 cursor-not-allowed"
+                                    ? "text-emerald-400"
+                                    : "text-white/40"
                             )}
                         >
-                            {step > s.num ? <CheckCircle2 size={12} className="text-emerald-400" /> : <span>{s.num}.</span>}
-                            <span>{s.label}</span>
-                        </button>
+                            <span className={cn(
+                                "w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold",
+                                step === s.num
+                                    ? "bg-indigo-500 text-white"
+                                    : step > s.num
+                                    ? "bg-emerald-500/20 text-emerald-400"
+                                    : "bg-white/10 text-white/40"
+                            )}>
+                                {step > s.num ? "✓" : s.num}
+                            </span>
+                            <span className="hidden sm:inline">{s.label}</span>
+                        </div>
                     ))}
                 </div>
             </div>
@@ -317,71 +371,62 @@ export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string)
             {/* STEP 1: SOURCE INGEST */}
             {step === 1 && (
                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* URL / Upload Box */}
-                        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.08] space-y-5">
+                    <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.08] space-y-6">
+                        <div>
                             <h2 className="text-base font-semibold text-white flex items-center gap-2">
-                                <Video size={18} className="text-indigo-400" /> 1. Upload Source Video or URL
+                                <Video size={18} className="text-indigo-400" /> Source Video Ingestion
                             </h2>
-
-                            {/* File Drag Drop */}
-                            <div className="border-2 border-dashed border-white/[0.1] hover:border-indigo-500/50 rounded-xl p-6 text-center transition-colors bg-white/[0.01]">
-                                <input
-                                    type="file"
-                                    accept="video/mp4,video/quicktime"
-                                    id="video-upload"
-                                    className="hidden"
-                                    onChange={(e) => {
-                                        if (e.target.files?.[0]) {
-                                            setVideoFile(e.target.files[0]);
-                                            setVideoUrl('');
-                                        }
-                                    }}
-                                />
-                                <label htmlFor="video-upload" className="cursor-pointer block">
-                                    <UploadCloud size={32} className="mx-auto mb-2 text-white/40" />
-                                    <span className="text-sm text-white/80 font-medium block">
-                                        {videoFile ? videoFile.name : "Click to upload video file (MP4, MOV)"}
-                                    </span>
-                                    <span className="text-xs text-white/40 mt-1 block">Up to 60s recommended</span>
-                                </label>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <div className="h-px bg-white/[0.08] flex-1" />
-                                <span className="text-xs text-white/40 uppercase tracking-wider font-semibold">OR PASTE URL</span>
-                                <div className="h-px bg-white/[0.08] flex-1" />
-                            </div>
-
-                            {/* URL Input */}
-                            <div className="relative">
-                                <LinkIcon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
-                                <input
-                                    type="url"
-                                    placeholder="https://www.youtube.com/shorts/... or TikTok URL"
-                                    value={videoUrl}
-                                    onChange={(e) => {
-                                        setVideoUrl(e.target.value);
-                                        setVideoFile(null);
-                                    }}
-                                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
-                                />
-                            </div>
+                            <p className="text-xs text-white/50 mt-1">
+                                Upload a video or import from YouTube/Instagram/TikTok to extract its visual DNA, character models, and narrative rhythm.
+                            </p>
                         </div>
 
-                        {/* Niche Selection Box */}
-                        <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.08] space-y-5 flex flex-col justify-between">
-                            <div>
-                                <h2 className="text-base font-semibold text-white flex items-center gap-2 mb-3">
-                                    <Sparkles size={18} className="text-purple-400" /> 2. Target Niche
-                                </h2>
-                                <p className="text-xs text-white/50 mb-4">
-                                    The AI Director will adapt the hook, humor formula, and character dialogue to this niche.
-                                </p>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                                    {NICHES.map(n => (
+                        <div className="space-y-4">
+                            {/* URL or Upload */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold text-white/80 flex items-center gap-1.5">
+                                        <LinkIcon size={14} className="text-indigo-400" /> Public Video URL
+                                    </label>
+                                    <input
+                                        type="url"
+                                        placeholder="https://youtube.com/shorts/... or tiktok.com/..."
+                                        value={videoUrl}
+                                        onChange={(e) => { setVideoUrl(e.target.value); setVideoFile(null); }}
+                                        className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold text-white/80 flex items-center gap-1.5">
+                                        <UploadCloud size={14} className="text-indigo-400" /> Upload File Directly
+                                    </label>
+                                    <label className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] border-dashed hover:border-indigo-500/50 cursor-pointer flex items-center justify-between text-xs text-white/60 transition-colors">
+                                        <span className="truncate">{videoFile ? videoFile.name : "Select .mp4 or .mov video file"}</span>
+                                        <input
+                                            type="file"
+                                            accept="video/*"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                if (e.target.files?.[0]) {
+                                                    setVideoFile(e.target.files[0]);
+                                                    setVideoUrl('');
+                                                }
+                                            }}
+                                        />
+                                        <FileIcon size={16} className="text-indigo-400 flex-shrink-0 ml-2" />
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* Niche Selection */}
+                            <div className="space-y-2 pt-2">
+                                <label className="text-xs font-semibold text-white/80 block">Target Content Niche</label>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
+                                    {NICHES.map((n) => (
                                         <button
                                             key={n.id}
+                                            type="button"
                                             onClick={() => setSelectedNiche(n.id)}
                                             className={cn(
                                                 "p-3 rounded-xl border text-left text-xs font-medium transition-all flex items-center justify-between",
@@ -400,7 +445,7 @@ export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string)
                             <button
                                 onClick={handleAnalyze}
                                 disabled={isAnalyzing || (!videoUrl && !videoFile)}
-                                className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 transition-all disabled:opacity-50"
+                                className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-sm font-semibold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 transition-all disabled:opacity-50 mt-4"
                             >
                                 {isAnalyzing ? (
                                     <>
@@ -518,26 +563,154 @@ export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string)
                     <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.08] space-y-6">
                         <div>
                             <h2 className="text-base font-semibold text-white flex items-center gap-2">
-                                <Wand2 size={18} className="text-purple-400" /> Creative Transformation & Dialogue
+                                <Wand2 size={18} className="text-purple-400" /> Creative Transformation
                             </h2>
                             <p className="text-xs text-white/50 mt-1">
-                                Customize the new storyline while preserving the timing, character physics, and visual aesthetics.
+                                Clone the visual DNA. Create something new. The user decides what to preserve — CloneFrame creates the rest.
                             </p>
                         </div>
 
+                        {/* PRESERVATION OPTIONS & PRESETS */}
+                        <div className="p-5 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div>
+                                    <span className="text-xs font-bold text-white uppercase tracking-wider block">
+                                        WHAT SHOULD CLONEFRAME PRESERVE?
+                                    </span>
+                                    <span className="text-[11px] text-white/40">
+                                        Select individual options or choose a quick preset.
+                                    </span>
+                                </div>
+
+                                {/* PRESETS BAR */}
+                                <div className="flex flex-wrap gap-1.5">
+                                    {[
+                                        { id: 'style_only', label: 'Style Only' },
+                                        { id: 'characters_and_style', label: 'Characters + Style' },
+                                        { id: 'full_visual_clone', label: 'Full Visual Clone' },
+                                        { id: 'trend_inspired', label: 'Trend Inspired' }
+                                    ].map((p) => (
+                                        <button
+                                            key={p.id}
+                                            type="button"
+                                            onClick={() => applyPreset(p.id as any)}
+                                            className={cn(
+                                                "px-3 py-1 rounded-lg text-xs font-medium transition-all border",
+                                                cloneMode === p.id
+                                                    ? "bg-indigo-600/30 border-indigo-500 text-indigo-300 shadow-sm"
+                                                    : "bg-white/[0.03] border-white/[0.06] text-white/60 hover:text-white"
+                                            )}
+                                        >
+                                            {p.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* 4 INTERACTIVE CHECKBOXES */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                <label className={cn(
+                                    "p-3.5 rounded-xl border cursor-pointer flex items-start gap-3 transition-all",
+                                    preserveVisualStyle 
+                                        ? "bg-indigo-500/10 border-indigo-500/40 text-white" 
+                                        : "bg-white/[0.02] border-white/[0.06] text-white/50 hover:border-white/20"
+                                )}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={preserveVisualStyle} 
+                                        onChange={(e) => {
+                                            setPreserveVisualStyle(e.target.checked);
+                                            setCloneMode('custom');
+                                        }} 
+                                        className="mt-0.5 rounded border-white/20 text-indigo-600 focus:ring-0"
+                                    />
+                                    <div>
+                                        <span className="text-xs font-semibold block">Visual Style</span>
+                                        <span className="text-[11px] opacity-70">Keep art style, lighting, render language, and color palette.</span>
+                                    </div>
+                                </label>
+
+                                <label className={cn(
+                                    "p-3.5 rounded-xl border cursor-pointer flex items-start gap-3 transition-all",
+                                    preserveCharacters 
+                                        ? "bg-indigo-500/10 border-indigo-500/40 text-white" 
+                                        : "bg-white/[0.02] border-white/[0.06] text-white/50 hover:border-white/20"
+                                )}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={preserveCharacters} 
+                                        onChange={(e) => {
+                                            setPreserveCharacters(e.target.checked);
+                                            setCloneMode('custom');
+                                        }} 
+                                        className="mt-0.5 rounded border-white/20 text-indigo-600 focus:ring-0"
+                                    />
+                                    <div>
+                                        <span className="text-xs font-semibold block">Characters</span>
+                                        <span className="text-[11px] opacity-70">Keep source character visual appearance & identities.</span>
+                                    </div>
+                                </label>
+
+                                <label className={cn(
+                                    "p-3.5 rounded-xl border cursor-pointer flex items-start gap-3 transition-all",
+                                    preserveEnvironment 
+                                        ? "bg-indigo-500/10 border-indigo-500/40 text-white" 
+                                        : "bg-white/[0.02] border-white/[0.06] text-white/50 hover:border-white/20"
+                                )}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={preserveEnvironment} 
+                                        onChange={(e) => {
+                                            setPreserveEnvironment(e.target.checked);
+                                            setCloneMode('custom');
+                                        }} 
+                                        className="mt-0.5 rounded border-white/20 text-indigo-600 focus:ring-0"
+                                    />
+                                    <div>
+                                        <span className="text-xs font-semibold block">Environment</span>
+                                        <span className="text-[11px] opacity-70">Keep source background world setting and architectural mood.</span>
+                                    </div>
+                                </label>
+
+                                <label className={cn(
+                                    "p-3.5 rounded-xl border cursor-pointer flex items-start gap-3 transition-all",
+                                    preserveCameraPacing 
+                                        ? "bg-indigo-500/10 border-indigo-500/40 text-white" 
+                                        : "bg-white/[0.02] border-white/[0.06] text-white/50 hover:border-white/20"
+                                )}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={preserveCameraPacing} 
+                                        onChange={(e) => {
+                                            setPreserveCameraPacing(e.target.checked);
+                                            setCloneMode('custom');
+                                        }} 
+                                        className="mt-0.5 rounded border-white/20 text-indigo-600 focus:ring-0"
+                                    />
+                                    <div>
+                                        <span className="text-xs font-semibold block">Camera & Pacing</span>
+                                        <span className="text-[11px] opacity-70">Keep shot durations, cut frequency, and dynamic camera angles.</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        {/* NEW STORY INPUT */}
                         <div className="space-y-4">
                             <div>
-                                <label className="text-xs font-semibold text-white/80 block mb-1.5">Custom Story Prompt / Topic</label>
+                                <label className="text-xs font-semibold text-white/80 block mb-1.5 uppercase tracking-wide">
+                                    WHAT SHOULD THE NEW STORY BE ABOUT?
+                                </label>
                                 <textarea
                                     rows={3}
-                                    placeholder="e.g. Husband forgets his car keys inside the locked house while wife watches sarcastically..."
+                                    placeholder="e.g. A high-stakes comedic bank heist where the characters try to crack a high-security vault..."
                                     value={customPrompt}
                                     onChange={(e) => setCustomPrompt(e.target.value)}
                                     className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.08] text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
                                 />
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-xs font-semibold text-white/80 block mb-1.5">Language / Accent</label>
                                     <select
@@ -565,43 +738,12 @@ export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string)
                                         <option value={60}>~60s</option>
                                     </select>
                                 </div>
-
-                                <div>
-                                    <label className="text-xs font-semibold text-white/80 block mb-1.5">Generation Mode</label>
-                                    <div className="flex gap-2 h-[42px]">
-                                        <button
-                                            type="button"
-                                            onClick={() => setUseLipSync(false)}
-                                            className={cn(
-                                                "flex-1 px-2 py-1 rounded-lg border text-[11px] font-medium transition-all text-center leading-tight flex items-center justify-center",
-                                                !useLipSync
-                                                    ? "bg-indigo-600/20 border-indigo-500 text-indigo-300"
-                                                    : "bg-white/[0.02] border-white/[0.06] text-white/50 hover:bg-white/[0.05]"
-                                            )}
-                                        >
-                                            Voiceover
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setUseLipSync(true)}
-                                            className={cn(
-                                                "flex-1 px-2 py-1 rounded-lg border text-[11px] font-medium transition-all text-center leading-tight flex flex-col items-center justify-center",
-                                                useLipSync
-                                                    ? "bg-indigo-600/20 border-indigo-500 text-indigo-300"
-                                                    : "bg-white/[0.02] border-white/[0.06] text-white/50 hover:bg-white/[0.05]"
-                                            )}
-                                        >
-                                            <span>Talking Character</span>
-                                            <span className="text-[9px] opacity-70">Requires lip-sync credits</span>
-                                        </button>
-                                    </div>
-                                </div>
                             </div>
 
                             <div className="p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex gap-3 items-start mt-2">
                                 <Sparkles size={16} className="text-indigo-400 mt-0.5 flex-shrink-0" />
                                 <p className="text-xs text-indigo-200/80 leading-relaxed">
-                                    We automatically split and assemble your video into optimized scenes. Final duration may vary slightly while preserving story pacing.
+                                    CloneFrame extracts and preserves only your selected DNA, generating a completely original storyboard with fresh characters, locations, and dialogue based on your prompt.
                                 </p>
                             </div>
                         </div>

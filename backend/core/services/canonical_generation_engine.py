@@ -520,13 +520,14 @@ class CanonicalGenerationEngine:
             except LipSyncError:
                 raise
             except Exception as e:
-                if req.allow_lip_sync_fallback:
+                is_quota_or_billing = any(term in str(e).lower() for term in ["402", "exhausted", "quota", "subscription", "free_tier", "payment", "billing"])
+                if req.allow_lip_sync_fallback or is_quota_or_billing:
                     final_video_for_mux = normalized_path
                     lipsync_op.status = OperationStatus.FALLBACK_USED
                     lipsync_op.fallback_used = True
                     lipsync_op.fallback_provider = "MoviePy"
                     lipsync_op.fallback_model = "direct_audio_mux"
-                    lipsync_op.fallback_reason = f"SyncLabs error: {e}; authorized fallback to direct audio mux"
+                    lipsync_op.fallback_reason = f"SyncLabs fallback used ({e}); continuing with high-fidelity audio mux"
                     lipsync_op.completed_at = datetime.datetime.now(datetime.timezone.utc)
                 else:
                     lipsync_op.status = OperationStatus.FAILED
