@@ -173,15 +173,17 @@ NEXT_PUBLIC_BACKEND_URL
 
 ### 2.3 AI Models & Prompts
 
-**Script Writing (Gemini 2.0 Flash):**
+**Script Writing (ModelRoutingConfig-routed):**
 ```python
-# Model Selection (main.py:350-367)
-def get_best_model():
-    try:
-        return GenerativeModel("gemini-2.0-flash-exp")  # Priority
-    except:
-        return GenerativeModel("gemini-1.5-flash-001")  # Fallback
+# Single source of truth: backend/config.py::ModelRoutingConfig
+#   NORMAL_STORY  -> gemini-3.1-flash-lite           (Vertex AI, structured JSON)
+#   COMPLEX_STORY -> us.anthropic.claude-sonnet-4-6  (AWS Bedrock)
+# Complexity router:
+#   core/services/production_director.py::determine_story_complexity
 ```
+*Historical note: the earlier `get_best_model()` snippet (`gemini-2.0-flash-exp` /
+`gemini-1.5-flash-001`, referenced as `main.py:350-367`) belonged to the legacy
+viral_editor pipeline and no longer exists in the current `main.py`.*
 
 **Prompt Strategy:**
 - **Viral Hooks**: Curiosity gaps, negative urgency, listicles, stories

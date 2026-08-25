@@ -1,0 +1,44 @@
+# CLONEFRAME / AI-CONTENT-HUB — PROJECT SYSTEM RULES FOR CLINE & 0X ALPHA
+
+You are working on **CloneFrame** (formerly AI-Content-Hub), a production-grade multi-model AI video creation & cloning platform for B2B Social Media Marketing Agencies.
+
+## 1. Core Architecture & Tech Stack
+* **Frontend:** Next.js 15 (App Router, Tailwind CSS 4, Framer Motion, TypeScript) located in `/frontend`
+* **Backend:** FastAPI (Python 3.10+, Uvicorn, Async Orchestration) located in `/backend`
+* **Cloud Infrastructure (GCP):**
+  - **Cloud Run:** Backend container (`ai-video-backend-00154-8lc` in `us-central1`, 8Gi RAM, 2 vCPU)
+  - **Cloud Tasks:** Async distributed rendering queue (`generation-queue` at 500 dispatches/sec)
+  - **Google Cloud Storage (GCS):** Media bucket (`shortcutai-user-uploads-2026`) for assets, turnaround sheets, and MP4s
+  - **Firestore & Firebase Auth:** User session management, project state, and blueprint persistence
+
+## 2. Multi-Model AI Video Generation Pipeline
+All model strings MUST come from `backend/config.py::ModelRoutingConfig` — the single source of truth, verified against the live GCP catalog by `core/model_validator.py` at startup. The pipeline orchestrates specialized foundation models sequentially:
+1. **Source DNA Analysis:** `SOURCE_ANALYSIS` (`gemini-3.1-flash-lite`, Vertex AI) extracts visual style, characters, pacing, narrative beats via `services/source_analyzer.py`.
+2. **Story Transformation:** `NORMAL_STORY` (`gemini-3.1-flash-lite`) writes new storyboards; `COMPLEX_STORY` (`us.anthropic.claude-sonnet-4-6` via AWS Bedrock) handles >30s duration / >4 scenes / >=3 characters (see `determine_story_complexity`).
+3. **Reference Conditioning:** `REFERENCE_IMAGE` (`gemini-2.5-flash-image`) generates and validates character reference images (`core/services/reference_manager.py`).
+4. **Voice & Dialogue Synthesis:** ElevenLabs — `VOICE_PREMIUM` (`eleven_v3`) when lip-sync requested, else `VOICE_DEFAULT` (`eleven_flash_v2_5`); long-form uses `eleven_multilingual_v2`. Fail-closed contract inside `CanonicalGenerationEngine`.
+5. **Neural Video Rendering:** Google Veo 3.1 — `VIDEO_DEFAULT`/`VIDEO_PREMIUM` (`veo-3.1-generate-001`); A/B candidate `VIDEO_FAST` (`veo-3.1-fast-generate-001`). Renders 9:16 vertical clips with frame-continuity chaining for >8s durations.
+6. **Quality Gate:** `QUALITY_REVIEW` (`gemini-3.1-flash-lite`) scores every take; non-BALANCED scene priorities escalate to `QUALITY_REVIEW_ESCALATE` (`gemini-3.1-pro-preview`). Rejections trigger adaptive retry, capped by `MAX_SCENE_QUALITY_RETRIES` in `config.py` (default 1).
+7. **Lip-Sync & Assembly:** SyncLabs `LIPSYNC` (`lipsync-2`) when requested (fail-closed contract); MoviePy normalization + muxing (`libx264`/`aac`) guarantees zero-dropped-frame assembly.
+
+## 3. Key Architectural Files to Reference
+* **Master Audits & Contracts:**
+  - `MASTER_ARCHITECTURE_AUDIT.md`: Complete system architecture audit
+  - `CANONICAL_CLONE_SCHEMA.md`: Data contracts for blueprints and transformations
+  - `UNIVERSAL_TRANSFORMATION_CONTRACT.md`: Preservation flags & originality validation rules
+* **Backend Services:**
+  - `backend/main.py`: Main FastAPI app router mounting
+  - `backend/routers/video_cloner.py`: Core Video Cloner API endpoints and Cloud Tasks task runners
+  - `backend/core/services/canonical_generation_engine.py`: Single authoritative video generation engine
+  - `backend/core/services/production_director.py`: Transformation compiler and entity validator
+  - `backend/core/services/originality_validator.py`: Jaccard text similarity and character isolation checks
+* **Frontend Components:**
+  - `frontend/components/VideoCloner.tsx`: 5-step video cloning and transformation wizard
+  - `frontend/components/landing/LandingPage.tsx`: B2B SMMA landing page
+  - `frontend/app/page.tsx`: Route entry point
+
+## 4. Operating Rules for Cline / 0x Alpha
+* Never blindly rewrite or delete working generation logic in `canonical_generation_engine.py`.
+* Always respect user preservation flags (`preserve_visual_style`, `preserve_characters`, `preserve_environment`, `preserve_camera_pacing`).
+* Validate all code changes with typechecks and unit tests before finalizing.
+* Never hardcode model string literals in routers/services — always route through `config.ModelRoutingConfig` (`tests/test_model_routing.py` enforces this).

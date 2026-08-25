@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
     Sparkles, Link as LinkIcon, Video, CheckCircle2, Loader2, ArrowRight, 
     Zap, UploadCloud, File as FileIcon, Eye, ShieldCheck, Film, Layers,
@@ -83,6 +83,19 @@ export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string)
     const [isGenerating, setIsGenerating] = useState(false);
     const [generationProgress, setGenerationProgress] = useState<string>('');
     const [finalVideoUrl, setFinalVideoUrl] = useState<string | null>(null);
+
+    // Status-polling lifecycle guard (P2: prevent interval leak on unmount)
+    const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    const stopStatusPolling = () => {
+        if (pollIntervalRef.current !== null) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+        }
+    };
+
+    // Clear any active poll timer when the wizard unmounts mid-render
+    useEffect(() => stopStatusPolling, []);
 
     const getAuthHeaders = async () => {
         if (!user) throw new Error("Not logged in");
@@ -280,31 +293,53 @@ export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string)
             });
             const genData = await genRes.json();
 
-            // Poll status
+            // Poll status (P2: bounded, leak-free polling)
             setStep(5);
-            const interval = setInterval(async () => {
+            const POLL_INTERVAL_MS = 4000;
+            const POLL_TIMEOUT_MS = 20 * 60 * 1000; // multi-scene Veo chains can run long
+            const MAX_CONSECUTIVE_POLL_ERRORS = 5;
+            const pollStartedAt = Date.now();
+            let consecutivePollErrors = 0;
+
+            pollIntervalRef.current = setInterval(async () => {
+                if (pollIntervalRef.current === null) return; // polling already stopped
+
+                if (Date.now() - pollStartedAt > POLL_TIMEOUT_MS) {
+                    stopStatusPolling();
+                    setIsGenerating(false);
+                    toast.error("Generation timed out after 20 minutes. Check diagnostics.");
+                    return;
+                }
+
                 try {
                     const stRes = await fetch(`${API_BASE_URL}/projects/${projectId}/production-blueprints/${productionBlueprint.blueprint_id}/status`, {
                         headers
                     });
                     const stData = await stRes.json();
-                    
+                    consecutivePollErrors = 0;
+
                     if (stData.status === "COMPLETED") {
-                        clearInterval(interval);
+                        stopStatusPolling();
                         setIsGenerating(false);
                         setFinalVideoUrl(stData.output_uri || stData.final_video_url);
                         toast.success("Video generated successfully!");
                     } else if (stData.status === "FAILED") {
-                        clearInterval(interval);
+                        stopStatusPolling();
                         setIsGenerating(false);
                         toast.error("Generation failed. Please check diagnostics.");
                     } else {
                         setGenerationProgress(`Rendering scene clips (${stData.status})...`);
                     }
                 } catch (e) {
-                    // silent polling retry
+                    console.error("[VideoCloner] Status poll failed:", e);
+                    consecutivePollErrors += 1;
+                    if (consecutivePollErrors >= MAX_CONSECUTIVE_POLL_ERRORS) {
+                        stopStatusPolling();
+                        setIsGenerating(false);
+                        toast.error("Lost connection while checking render status. Please retry.");
+                    }
                 }
-            }, 4000);
+            }, POLL_INTERVAL_MS);
 
         } catch (err: any) {
             console.error(err);

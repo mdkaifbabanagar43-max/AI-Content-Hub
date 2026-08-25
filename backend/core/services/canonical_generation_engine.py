@@ -10,7 +10,7 @@ from services.veo_service import generate_video_with_veo
 from services.trend_remixer import _sanitize_veo_prompt
 from core.services.quality_reviewer import QualityReviewer
 from core.services.timeline_builder import TimelineBuilder
-from config import TEMP_DIR, ModelRoutingConfig
+from config import TEMP_DIR, ModelRoutingConfig, MAX_SCENE_QUALITY_RETRIES
 from core.telemetry import log_model_telemetry
 
 from unittest.mock import MagicMock
@@ -232,7 +232,7 @@ class CanonicalGenerationEngine:
         # -------------------------------------------------------------
         # 4. Veo & Quality Review Loop (Strict Attempt Tracking)
         # -------------------------------------------------------------
-        max_retries = min(req.max_retries, 1) # Hard-capped to 1 retry
+        max_retries = min(req.max_retries, MAX_SCENE_QUALITY_RETRIES)  # Ops-tunable ceiling (config.MAX_SCENE_QUALITY_RETRIES)
         accepted_raw_path = None
         last_review = None
         last_veo_err = None
@@ -249,12 +249,20 @@ class CanonicalGenerationEngine:
             status=OperationStatus.REQUESTED
         )
         
+        # Mirror QualityReviewer's routing so telemetry always names the model
+        # that will actually be invoked (no hardcoded literals — see rule 4).
+        qr_model = (
+            ModelRoutingConfig.QUALITY_REVIEW_ESCALATE
+            if req.quality_priority != "BALANCED"
+            else ModelRoutingConfig.QUALITY_REVIEW
+        )
+
         qr_op = OperationRecord(
             operation_name="quality_review",
             scene_id=req.scene_id,
             required=True,
             provider="Google Gemini",
-            model="gemini-3.6-flash",
+            model=qr_model,
             status=OperationStatus.REQUESTED
         )
 
@@ -324,8 +332,8 @@ class CanonicalGenerationEngine:
                     with open(raw_video_path, "wb") as f:
                         f.write(raw_bytes)
                 elif isinstance(raw_bytes, str) and raw_bytes.startswith("gs://"):
-                    import subprocess
-                    subprocess.run(["gsutil", "cp", raw_bytes, raw_video_path], check=True)
+                    from core.storage_client import download_gcs_uri
+                    download_gcs_uri(raw_bytes, raw_video_path)
                 elif isinstance(raw_bytes, str) and os.path.exists(raw_bytes):
                     raw_video_path = raw_bytes
 

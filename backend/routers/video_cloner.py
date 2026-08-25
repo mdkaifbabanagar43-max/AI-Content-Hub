@@ -510,7 +510,7 @@ def run_production_job(user_id: str, project_id: str, blueprint_id: str):
                 quality_priority=scene.scene_quality_priority if scene.scene_quality_priority else "BALANCED",
                 use_lip_sync=use_lip_sync_req,
                 allow_lip_sync_fallback=allow_lip_sync_fb,
-                max_retries=min(bp.quality_strategy.max_retries, 1) if bp.quality_strategy else 1,
+                max_retries=(bp.quality_strategy.max_retries if bp.quality_strategy else 1),  # Engine clamps to MAX_SCENE_QUALITY_RETRIES ceiling
                 expected_duration=scene.estimated_duration_seconds or 5.0
             )
             
@@ -642,6 +642,11 @@ def run_production_job(user_id: str, project_id: str, blueprint_id: str):
             production_blueprint_repo.save(user_id, bp)
         except Exception:
             pass
+        # P0 BILLING FIX (fail-closed contract): Re-raise so the Cloud Tasks
+        # worker's exception handler runs release_reservation(). Swallowing
+        # here made the worker fall through to mark_completed(), committing
+        # the user's credit reservation for a FAILED generation.
+        raise
 
 @router.post("/{project_id}/production-blueprints/{production_blueprint_id}/generate")
 def generate_production(
@@ -742,9 +747,10 @@ async def generate_worker(request: Request, payload: TaskPayload):
         import traceback
         import logging
         logging.error(f"Generation error for job {payload.job_id}: {traceback.format_exc()}")
-        # Assuming all current run_production_job exceptions are permanent failures.
-        # In a real app, we'd discern HTTP 500s from Veo vs logic bugs. 
-        # For safety on permanent failure, release credits.
+        # run_production_job follows a fail-closed contract: any exception it
+        # raises is treated as a permanent generation failure. Release the
+        # credit reservation so the user is NOT charged for failed work, then
+        # return 200 so Cloud Tasks does not retry a permanent error.
         job_repo.release_reservation(payload.user_id, payload.project_id, payload.blueprint_id, payload.job_id)
         
         # We return 200 to Cloud Tasks so it DOES NOT retry unless we specifically throw a 50x.

@@ -536,7 +536,8 @@ def run_trend_cloner_job(job_id: str, user_id: str, request: GenerateRequest, cr
                             with open(raw_path, "wb") as f:
                                 f.write(video_bytes)
                         elif isinstance(video_bytes, str) and video_bytes.startswith("gs://"):
-                            subprocess.run(["gsutil", "cp", video_bytes, raw_path], check=True)
+                            from core.storage_client import download_gcs_uri
+                            download_gcs_uri(video_bytes, raw_path)
                             
                         if attempt:
                             attempt.output_uri = raw_path
@@ -705,7 +706,8 @@ def run_trend_cloner_job(job_id: str, user_id: str, request: GenerateRequest, cr
                 with open(raw_path, "wb") as f:
                     f.write(video_bytes)
             elif isinstance(video_bytes, str) and video_bytes.startswith("gs://"):
-                subprocess.run(["gsutil", "cp", video_bytes, raw_path], check=True)
+                from core.storage_client import download_gcs_uri
+                download_gcs_uri(video_bytes, raw_path)
 
             if request.script:
                 from services.elevenlabs_service import generate_voiceover

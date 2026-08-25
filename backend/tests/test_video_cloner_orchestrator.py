@@ -255,10 +255,15 @@ def test_hard_cap_retries_and_isolation(
         character_consistency=2.0, scene_adherence=2.0, visual_quality=2.0, continuity=2.0, overall=2.0, issues=[], recommended_action="reject"
     )
     
+    import pytest
+    from core.exceptions import QualityReviewError
     from routers.video_cloner import run_production_job
     
-    # It should catch the exception internally and exit
-    run_production_job("test_user_8d", test_project_id, bp.blueprint_id)
+    # P0 BILLING FIX REGRESSION: failures MUST propagate out of the
+    # orchestrator (fail-closed contract) so the Cloud Tasks worker releases
+    # the credit reservation instead of committing it.
+    with pytest.raises(QualityReviewError):
+        run_production_job("test_user_8d", test_project_id, bp.blueprint_id)
          
     # TEST 10: Even with max_retries=5, Veo is only called exactly TWICE (initial + 1 retry)
     assert mock_veo_service.call_count == 2

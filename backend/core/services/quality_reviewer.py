@@ -40,7 +40,12 @@ class QualityReviewer:
 
     def review_video(self, video_path: str, compiled_prompt: str, scene_quality_priority: str = "BALANCED") -> QualityReviewResult:
         """
-        Extracts frames and asks Gemini 3.6 Flash to score the video based on the prompt.
+        Extracts representative frames and asks the configured Gemini quality-review
+        model to score the video against the compiled scene prompt.
+
+        Routing (single source of truth: config.ModelRoutingConfig):
+          - BALANCED priority         -> QUALITY_REVIEW
+          - non-BALANCED priorities   -> QUALITY_REVIEW_ESCALATE
         """
         frames = self._extract_frames(video_path)
         

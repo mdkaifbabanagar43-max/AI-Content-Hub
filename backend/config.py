@@ -134,6 +134,12 @@ SERVICE_ACCOUNT_EMAIL = os.getenv("SERVICE_ACCOUNT_EMAIL", "cloud-tasks-invoker@
 WORKER_AUDIENCE = os.getenv("WORKER_AUDIENCE", "https://ai-video-backend-sfxkkeql7q-uc.a.run.app")
 WORKER_URL = os.getenv("WORKER_URL", f"{WORKER_AUDIENCE}/projects/_internal/tasks/generate-production")
 
+# Scene-level quality-retry ceiling. CanonicalGenerationEngine clamps every
+# request to this ceiling regardless of blueprint QualityStrategy.max_retries,
+# making the previous magic hard-cap explicit and ops-tunable via env
+# (e.g. MAX_SCENE_QUALITY_RETRIES=2 for higher-fidelity renders at 2x Veo cost).
+MAX_SCENE_QUALITY_RETRIES = int(os.getenv("MAX_SCENE_QUALITY_RETRIES", "1"))
+
 class ModelRoutingConfig:
     """Centralized Model Routing Configuration based on the Audit."""
     

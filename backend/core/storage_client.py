@@ -197,6 +197,32 @@ def download_from_gcs(gcs_path: str, local_path: str, bucket_name: str = None) -
                 print(f"[WARNING] Failed to copy local cached file: {copy_err}")
         return False
 
+def download_gcs_uri(gcs_uri: str, destination_path: str) -> None:
+    """
+    Download a fully-qualified gs://<bucket>/<object> URI to a local path.
+
+    Unlike download_from_gcs (scoped to UPLOAD_BUCKET with local-cache
+    fallback), this handles ARBITRARY buckets — e.g. Vertex AI Veo staging
+    buckets returned by generation jobs — and FAILS CLOSED by raising on any
+    error so callers treat it as a generation failure.
+
+    Replaces the legacy `subprocess ["gsutil", "cp", ...]` calls: the gsutil
+    binary is not guaranteed to exist inside Cloud Run containers.
+    """
+    if not gcs_uri or not gcs_uri.startswith("gs://"):
+        raise ValueError(f"Invalid GCS URI (expected gs://bucket/object): {gcs_uri!r}")
+
+    bucket_name, _, blob_path = gcs_uri[5:].partition("/")
+    if not bucket_name or not blob_path:
+        raise ValueError(f"Malformed GCS URI: {gcs_uri!r}")
+
+    client = get_storage_client()
+    print(f"[GCS] Downloading {gcs_uri} -> {destination_path}")
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(blob_path)
+    blob.download_to_filename(destination_path)
+    print(f"[SUCCESS] Downloaded {gcs_uri} to {destination_path}")
+
 def generate_signed_get_url(blob_name: str, bucket_name: str = None, expiration_hours: int = 1) -> Optional[str]:
     """Generate a signed URL for GET (download) access."""
     try:

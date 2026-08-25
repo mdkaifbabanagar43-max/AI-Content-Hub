@@ -33,3 +33,10 @@ output_*
 
 .vercel
 .env*
+
+# Local artifacts & secrets hygiene (P1 cleanup)
+VERCEL_ENV_VARS.txt
+sa.json
+**/sa.json
+.pytest_cache/
+backend/temp/

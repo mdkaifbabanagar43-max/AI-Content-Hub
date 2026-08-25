@@ -202,9 +202,19 @@ def test_quality_review_isolation_in_video_cloner(
     mock_tts.return_value = "audio.mp3"
     mock_normalize.return_value = "norm.mp4"
     mock_lip_sync.return_value = "synced.mp4"
-    
-    run_production_job("u1", "p1", "bp_1")
-    
+
+    # P0 BILLING FIX COORDINATED UPDATE: this test scopes its mocks to the
+    # scene-isolation stages only (add_scene is a no-op), so final assembly
+    # deterministically raises TimelineValidationException ("Timeline has no
+    # items"). That exception used to be silently swallowed by the billing
+    # bug (allowing the asserts below to run anyway); under the fail-closed
+    # contract it now correctly propagates.
+    import pytest
+    from core.services.timeline_builder import TimelineValidationException
+
+    with pytest.raises(TimelineValidationException):
+        run_production_job("u1", "p1", "bp_1")
+
     # 1. Generated twice
     assert mock_generate_video.call_count == 2
     # 2. Quality review called twice

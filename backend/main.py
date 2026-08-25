@@ -171,13 +171,32 @@ async def startup_event():
     print(f"📍 Environment: {os.getenv('ENVIRONMENT', 'development')}")
     print(f"📍 Project: {os.getenv('GOOGLE_CLOUD_PROJECT', 'shortcutai-backend')}")
     
-    # Validate model configuration
+    # --- STARTUP MODEL VALIDATION GATE (P1: re-enabled) ---
+    # Previously commented out ("FOR LOCAL TEST"), which allowed silent drift
+    # between ModelRoutingConfig and the live GCP model catalog.
+    # Policy:
+    #   - SKIP_MODEL_VALIDATION=1   -> force-skip (CI / offline smoke tests)
+    #   - No ADC credentials found  -> warn & continue in dev, ABORT in prod
+    #   - Live catalog mismatch     -> ALWAYS abort (config error in any env)
     try:
+        from google.auth.exceptions import DefaultCredentialsError
+
         from core.model_validator import validate_production_models
-        # validate_production_models() # COMMENTED OUT FOR LOCAL TEST
+
+        skip_validation = os.getenv("SKIP_MODEL_VALIDATION", "").strip().lower() in ("1", "true", "yes")
+        if skip_validation:
+            print("⏭️  Startup model validation SKIPPED (SKIP_MODEL_VALIDATION set).")
+            return
+
+        validate_production_models()
+    except DefaultCredentialsError:
+        is_prod_env = os.getenv("ENVIRONMENT", "development").lower() == "production"
+        if is_prod_env:
+            print("🚨 STARTUP ABORTED: No GCP Application Default Credentials available for model validation.")
+            sys.exit(1)
+        print("⚠️  Model validation skipped: no Application Default Credentials (local/dev mode).")
     except Exception as e:
         print(f"🚨 STARTUP ABORTED: {e}")
-        import sys
         sys.exit(1)
 
 @app.on_event("shutdown")

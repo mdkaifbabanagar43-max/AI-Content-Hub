@@ -7,7 +7,6 @@ node_modules/
 # Exception: Configuration needed for dev
 !package.json
 !tsconfig.json
-!payload.json
 
 # Environment
 .env
