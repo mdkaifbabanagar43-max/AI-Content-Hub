@@ -68,7 +68,14 @@ class ProductionTransformationRequest(BaseModel):
                 data.setdefault("preserve_characters", True)
                 
             # Mode presets auto-sync
-            if data.get("clone_mode") == "characters_and_style":
+            if data.get("clone_mode") == "characters_only":
+                # Contract preset "Character Clone": keep characters + art style,
+                # regenerate environment/camera/pacing (P3/Q2 gap-closer)
+                data.setdefault("preserve_visual_style", True)
+                data.setdefault("preserve_characters", True)
+                data.setdefault("preserve_environment", False)
+                data.setdefault("preserve_camera_pacing", False)
+            elif data.get("clone_mode") == "characters_and_style":
                 data.setdefault("preserve_visual_style", True)
                 data.setdefault("preserve_characters", True)
                 data.setdefault("preserve_environment", False)

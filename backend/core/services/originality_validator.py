@@ -132,7 +132,7 @@ def compute_narrative_similarity(
 def validate_blueprint_originality(
     source_bp: CloneBlueprint,
     production_bp: ProductionBlueprint,
-    max_allowed_similarity: float = 0.40,
+    max_allowed_similarity: float = None,
     preserve_characters: Optional[bool] = None,
     preserve_environment: Optional[bool] = None
 ) -> bool:
@@ -141,6 +141,10 @@ def validate_blueprint_originality(
     user preservation choices (e.g. not reusing source character IDs when characters=False).
     Raises OriginalityValidationException if similarity exceeds the threshold or preservation rules are violated.
     """
+    # P3/Q5: threshold centralized in config (env-overridable, default 0.40)
+    if max_allowed_similarity is None:
+        from config import ORIGINALITY_THRESHOLD
+        max_allowed_similarity = ORIGINALITY_THRESHOLD
     # Check preservation compliance if specified on blueprint or arguments
     char_preserved = preserve_characters if preserve_characters is not None else getattr(production_bp, 'preserve_characters', None)
     env_preserved = preserve_environment if preserve_environment is not None else getattr(production_bp, 'preserve_environment', None)

@@ -153,7 +153,8 @@ def test_no_hardcoded_model_literals_in_services():
         os.path.join(BASE_DIR, "services", "source_analyzer.py"),
         os.path.join(BASE_DIR, "services", "trend_analyzer.py"),
         os.path.join(BASE_DIR, "core", "services", "production_director.py"),
-        os.path.join(BASE_DIR, "services", "lip_sync_service.py")
+        os.path.join(BASE_DIR, "services", "lip_sync_service.py"),
+        os.path.join(BASE_DIR, "core", "services", "source_dna_adapter.py"),
     ]
     
     for file_path in files_to_check:

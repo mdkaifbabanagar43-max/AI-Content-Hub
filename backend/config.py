@@ -140,6 +140,11 @@ WORKER_URL = os.getenv("WORKER_URL", f"{WORKER_AUDIENCE}/projects/_internal/task
 # (e.g. MAX_SCENE_QUALITY_RETRIES=2 for higher-fidelity renders at 2x Veo cost).
 MAX_SCENE_QUALITY_RETRIES = int(os.getenv("MAX_SCENE_QUALITY_RETRIES", "1"))
 
+# Narrative-originality ceiling (Jaccard composite, originality_validator.py).
+# Generated blueprints exceeding this similarity vs the source CloneBlueprint
+# are rejected as verbatim clones. P3/Q5: centralized alongside other gates.
+ORIGINALITY_THRESHOLD = float(os.getenv("ORIGINALITY_THRESHOLD", "0.40"))
+
 class ModelRoutingConfig:
     """Centralized Model Routing Configuration based on the Audit."""
     
