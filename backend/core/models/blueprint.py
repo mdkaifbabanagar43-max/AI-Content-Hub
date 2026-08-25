@@ -132,7 +132,11 @@ class ProductionBlueprint(BaseModel):
     
     # Approval
     status: Literal["DRAFT", "READY_FOR_APPROVAL", "APPROVED", "SUPERSEDED", "INVALID", "IN_PRODUCTION", "COMPLETED", "FAILED"] = "DRAFT"
-    
+
+    # P3 Phase B: structured G1-G4 gate results from ValidationPipeline.
+    # Optional metadata only - downstream consumers may ignore it entirely.
+    validation_report: Optional[Dict[str, Any]] = None
+
     created_at: datetime.datetime = Field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc))
     updated_at: datetime.datetime = Field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc))
 

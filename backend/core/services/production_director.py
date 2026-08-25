@@ -467,6 +467,26 @@ class ProductionDirector:
         6. Ensure all scene actions, visual descriptions, and character actions are completely safe, family-friendly, and adhere to AI safety guidelines.
         """
         
+        return self.synthesize_clone_blueprint(
+            prompt=prompt, complexity=complexity, request=request,
+            clone_blueprint=clone_blueprint, context=context,
+        )
+
+    def synthesize_clone_blueprint(self, prompt: str, complexity: str,
+                                   request: ProductionTransformationRequest,
+                                   clone_blueprint: CloneBlueprint,
+                                   context: GenerationContext) -> ProductionBlueprint:
+        """
+        P3/Phase-B extraction: runs invoke -> parse -> bind lineage &
+        preservation flags -> entity/originality validation -> cost estimate
+        -> save(DRAFT v1) for an EXTERNALLY COMPILED prompt.
+
+        - Legacy transform_clone_blueprint() delegates here unchanged, so its
+          behavior is byte-identical (golden tests lock this).
+        - UniversalCreativeDirector (Phase B) calls this directly, feeding
+          TransformationContext.compile_prompt() output instead.
+        Retry ladder and every exception semantic are preserved verbatim.
+        """
         max_retries = 2
         last_error = ""
         

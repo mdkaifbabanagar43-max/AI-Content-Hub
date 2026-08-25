@@ -1,6 +1,14 @@
 from typing import List, Optional, Any, Dict
 from pydantic import BaseModel, Field, model_validator
 
+from core.models.clone_intent import (
+    CharacterMode,
+    CreativeIntent,
+    EnvironmentMode,
+    StoryMode,
+    PreservationProfile,
+)
+
 class ProductionTransformationRequest(BaseModel):
     # What to change (User Creative Intent)
     topic: Optional[str] = Field(None, description="The new topic or subject matter (e.g., 'Make it about Bitcoin')")
@@ -34,6 +42,21 @@ class ProductionTransformationRequest(BaseModel):
     preserve_emotional_arc: bool = Field(True, description="Keep the same emotional progression per scene")
     
     additional_instructions: Optional[str] = Field(None, description="Any other specific instructions for the Director")
+
+    # ── P3/D1: Universal contract blocks (OPTIONAL superset) ──────────
+    # When preservation_profile is supplied it WINS over the legacy top-level
+    # booleans above (§5a conflict rule); those remain permanently accepted
+    # for backward compatibility (Q3 verdict).
+    preservation_profile: Optional[PreservationProfile] = Field(
+        None, description="Eight-toggle canonical preservation profile")
+    character_mode: Optional[CharacterMode] = Field(
+        None, description="PRESERVE_SOURCE | CREATE_NEW | MIXED (degraded)")
+    environment_mode: Optional[EnvironmentMode] = Field(
+        None, description="PRESERVE_SOURCE | CREATE_NEW | ADAPT")
+    story_mode: Optional[StoryMode] = Field(
+        None, description="NEW_STORY | STRUCTURE_INSPIRED | TREND_INSPIRED")
+    creative_intent: Optional[CreativeIntent] = Field(
+        None, description="Canonical new-content directive")
 
     @model_validator(mode="before")
     @classmethod
