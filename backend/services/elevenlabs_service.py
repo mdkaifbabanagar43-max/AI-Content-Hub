@@ -78,15 +78,15 @@ def generate_voiceover(script: Union[str, List[Dict[str, Any]]], voice_id: str =
     current_time = 0.0
     
     for line in script:
-        speaker = line.get("speaker", "Male")
+        voice_label = line.get("voice_label", "Male")
         text = line.get("text", "")
         meme = line.get("meme_overlay", "none")
         # Only generate TTS if there is text
         if not text.strip():
             continue
             
-        vid = VOICE_MAP.get(speaker, voice_id)
-        print(f"[ElevenLabs] Generating TTS for {speaker}: {text[:30]}...")
+        vid = VOICE_MAP.get(voice_label, voice_id)
+        print(f"[ElevenLabs] Generating TTS for {voice_label}: {text[:30]}...")
         
         mp3_path = _generate_single_tts(text, vid, is_premium)
         temp_files.append(mp3_path)

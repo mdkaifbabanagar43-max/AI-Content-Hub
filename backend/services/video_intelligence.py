@@ -1,7 +1,4 @@
 
-import os
-import cv2
-import numpy as np
 from scenedetect import VideoManager, SceneManager
 from scenedetect.detectors import ContentDetector
 

@@ -1,7 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
 import os
-import tempfile
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from services.lip_sync_service import sync_lips

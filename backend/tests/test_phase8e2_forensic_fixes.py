@@ -1,20 +1,13 @@
-import os
-import uuid
-import pytest
 from unittest.mock import MagicMock, patch
 
 from core.models.blueprint import (
     ProductionBlueprint,
     SceneBlueprint,
-    CameraDirection,
-    DialogueLine,
-    ContinuityRequirement,
-    QualityStrategy
+    CameraDirection
 )
-from core.models.clone_blueprint import CloneBlueprint, CloneSceneBlueprint, CloneShot, PacingProfile
+from core.models.clone_blueprint import CloneBlueprint, PacingProfile
 from core.models.source_analysis import SourceVisualStyle, HookAnalysis, CTAAnalysis, SourceAudioProfile
 from core.models.context import GenerationContext
-from core.models.character import Character
 from core.models.style import Style
 from core.services.quality_reviewer import QualityReviewResult
 from core.services.bible_loader import ResolvedScene
@@ -24,8 +17,7 @@ from core.services.production_director import ProductionDirector
 from core.models.transformation import ProductionTransformationRequest
 from core.services.canonical_generation_engine import (
     CanonicalGenerationEngine,
-    CanonicalGenerationRequest,
-    CanonicalGenerationResult
+    CanonicalGenerationRequest
 )
 from services.trend_remixer import _sanitize_veo_prompt
 

@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime, timezone
 from google.cloud import firestore
 from core.firestore_client import get_db

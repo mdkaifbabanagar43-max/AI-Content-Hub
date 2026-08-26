@@ -3,7 +3,6 @@ import random
 import requests
 import concurrent.futures
 import time
-import re
 import gc
 import numpy as np
 
@@ -51,7 +50,7 @@ def get_moviepy():
 
     )
 
-    from moviepy.video.fx.all import resize, crop, fadein, fadeout
+    from moviepy.video.fx.all import resize, crop
 
     from moviepy.editor import clips_array
 
@@ -561,9 +560,7 @@ def batch_download_videos(terms, output_dir=None, orientation="portrait", main_t
 
 
 # --- INTELLIGENT FACE TRACKING (MediaPipe - Free) ---
-import mediapipe as mp
 
-import cv2
 
 class SmartCropEngine:
     def __init__(self):

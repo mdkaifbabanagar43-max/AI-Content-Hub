@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { User, Zap, Crown, Building2, Check, HelpCircle, AlertCircle } from 'lucide-react';
+import { User, Zap, Building2, Check, HelpCircle, AlertCircle } from 'lucide-react';
 import { usePlan } from '../../context/PlanContext';
 import { cn } from '../../lib/utils';
 import MockCheckout from '../payment/MockCheckout';
@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 
 export default function Pricing() {
-    const { userPlan, setUserPlan, upgradePlan } = usePlan();
+    const { userPlan, upgradePlan } = usePlan();
     const { user } = useAuth();
     const router = useRouter();
     const [checkoutPlan, setCheckoutPlan] = React.useState<{ id: string, name: string, price: string, numericCredits: number } | null>(null);

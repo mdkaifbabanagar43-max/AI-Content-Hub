@@ -1,8 +1,6 @@
 import os
 import boto3
 import time
-import json
-import uuid
 
 # AWS Bedrock Nova Reel requires an S3 bucket for output
 S3_BUCKET_NAME = os.getenv("AWS_S3_BUCKET", "shortcutai-nova-assets-1")

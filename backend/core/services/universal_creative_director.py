@@ -36,7 +36,6 @@ from core.models.dna import SourceDNACluster
 from core.models.transformation import ProductionTransformationRequest
 from core.models.transformation_context import (
     TransformationContext,
-    effective_character_mode,
 )
 from core.services.production_director import (
     BlueprintValidationException,

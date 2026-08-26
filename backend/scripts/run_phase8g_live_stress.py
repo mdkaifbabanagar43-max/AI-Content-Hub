@@ -180,7 +180,7 @@ def run_phase8g_live_stress():
             dialogue=[
                 DialogueLine(
                     character_id="char_padlock_male",
-                    voice_id="voice_male_01",
+                    voice_label="voice_male_01",
                     text="Did you remember the lock?",
                     emotion="curious",
                     delivery_style="comedic",
@@ -371,7 +371,7 @@ def run_phase8g_live_stress():
         attempt_repo.save(user_id, project_id, attempt_id, attempt)
         
         dialogue_text = scene.dialogue[0].text if scene.dialogue else ""
-        speaker = scene.dialogue[0].voice_id if scene.dialogue else "Male"
+        speaker = scene.dialogue[0].voice_label if scene.dialogue else "Male"
         if dialogue_text:
             telemetry["elevenlabs_calls"] += 1
             

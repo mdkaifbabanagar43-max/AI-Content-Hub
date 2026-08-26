@@ -1,48 +1,37 @@
 import os
 import json
-import uuid
 import pytest
 from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
 
 from main import app
-from config import BASE_DIR, TEMP_DIR, CREDIT_COSTS, ModelRoutingConfig
+from config import BASE_DIR, CREDIT_COSTS
 from core.models.source_analysis import (
-    SourceAnalysis, SourceMediaMetadata, SourceSceneSegment, SceneSemanticAnalysis,
-    HookAnalysis, CTAAnalysis, SourceAudioProfile, SourceDialogueBeat, SourceVisualStyle
+    SourceAnalysis, SceneSemanticAnalysis,
+    HookAnalysis, CTAAnalysis, SourceAudioProfile, SourceVisualStyle
 )
 from core.models.clone_blueprint import (
     CloneBlueprint, CloneSceneBlueprint, NarrativeBeat, PacingProfile
 )
 from core.models.blueprint import (
-    ProductionBlueprint, SceneBlueprint, DialogueLine, CameraDirection,
-    ContinuityRequirement, QualityStrategy, GenerationStrategy
+    ProductionBlueprint, SceneBlueprint, DialogueLine, CameraDirection
 )
 from core.models.transformation import ProductionTransformationRequest
 from core.models.video_cloner import SourceVideoRecord, FinalVideoRecord
 from core.models.job import GenerationJob
-from core.models.context import GenerationContext
-from core.models.visual_identity import VisualIdentityPack, CharacterVisualIdentity, VisualTreatment
 
-from services.source_analyzer import probe_media_metadata, detect_scene_segments, run_source_analysis
+from services.source_analyzer import probe_media_metadata, detect_scene_segments
 from core.services.clone_blueprint_builder import CloneBlueprintBuilder
 from core.services.visual_identity_service import VisualIdentityService
 from core.services.production_director import ProductionDirector
 from core.services.canonical_generation_engine import (
-    CanonicalGenerationEngine, CanonicalGenerationRequest, CanonicalGenerationResult
+    CanonicalGenerationEngine, CanonicalGenerationRequest
 )
-from core.services.timeline_builder import TimelineBuilder
 from core.exceptions import (
     AudioGenerationError, VeoGenerationError, QualityReviewError,
-    LipSyncError, TimelineExecutionException, AssemblyException
+    LipSyncError
 )
 from core.auth import get_current_user
-from core.repositories.job_repo import GenerationJobRepository
-from core.repositories.blueprint_repo import BlueprintRepository
-from core.repositories.clone_blueprint_repo import CloneBlueprintRepository
-from core.repositories.video_cloner_repos import SourceVideoRepository, FinalVideoRepository, SourceAnalysisRepository
-from core.repositories.attempt_repo import GenerationAttemptRepository
-from core.models.attempt import GenerationAttempt
 from core.models.operation_state import verify_execution_certificate
 
 # Identify Golden Test Video
@@ -217,7 +206,7 @@ def test_golden_pipeline_end_to_end_mocked():
                 action="Padlock character stands at wooden door greeting neighbor",
                 dialogue=[DialogueLine(
                     character_id="char_padlock_1",
-                    voice_id="Male",
+                    voice_label="Male",
                     text="Namaste bhaisahab! Kahan ja rahe ho?",
                     emotion="cheerful",
                     delivery_style="conversational",
@@ -234,7 +223,7 @@ def test_golden_pipeline_end_to_end_mocked():
                 action="Padlock character gestures excitedly with hands",
                 dialogue=[DialogueLine(
                     character_id="char_padlock_1",
-                    voice_id="Male",
+                    voice_label="Male",
                     text="Deal pakki samjhein!",
                     emotion="excited",
                     delivery_style="energetic",
@@ -251,7 +240,7 @@ def test_golden_pipeline_end_to_end_mocked():
                 action="Padlock character smiles and shakes hands",
                 dialogue=[DialogueLine(
                     character_id="char_padlock_1",
-                    voice_id="Male",
+                    voice_label="Male",
                     text="Shukriya!",
                     emotion="happy",
                     delivery_style="warm",

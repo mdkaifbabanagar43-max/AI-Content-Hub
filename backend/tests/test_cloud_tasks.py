@@ -4,7 +4,6 @@ from unittest.mock import patch, MagicMock
 
 # Import the FastAPI app
 from main import app
-from core.models.job import GenerationJob
 from core.repositories.job_repo import GenerationJobRepository
 
 client = TestClient(app)

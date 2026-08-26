@@ -2,7 +2,6 @@ from typing import Optional
 from datetime import datetime, timezone
 from core.models.character import Character
 from core.repositories.base_repo import BaseProjectRepository
-from core.firestore_client import get_db
 
 class CharacterRepository(BaseProjectRepository[Character]):
     def __init__(self):

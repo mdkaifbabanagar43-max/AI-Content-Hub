@@ -1,7 +1,5 @@
-from typing import Optional, List
 from core.models.source_analysis import SourceAnalysis
 from core.repositories.base_repo import BaseRepository
-import datetime
 
 class SourceAnalysisRepository(BaseRepository[SourceAnalysis]):
     def __init__(self):

@@ -3,8 +3,7 @@
 import React from 'react';
 import { usePlan } from '../../context/PlanContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Fuel, X, Zap } from 'lucide-react';
-import Pricing from '../landing/Pricing';
+import { Fuel } from 'lucide-react';
 
 export default function LowBalanceModal() {
     const { showLowBalance, setShowLowBalance } = usePlan();

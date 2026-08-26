@@ -12,7 +12,7 @@ from services.ai_service import get_gemini_client, GEMINI_MODEL_NAME, GEMINI_FAL
 # ─────────────────────────────────────────────────────────────
 
 class DialogueLine(BaseModel):
-    speaker: str = Field(description="The character speaking, e.g., 'Male', 'Female', or character name")
+    voice_label: str = Field(description="The character speaking, e.g., 'Male', 'Female', or character name")
     text: str = Field(description="The Hinglish/Hindi dialogue text")
     meme_overlay: str = Field(description="Optional meme to overlay during this line, e.g., 'laugh', 'crying', or 'none'", default="none")
 
@@ -183,8 +183,10 @@ def remix_trend(analysis: dict, niche: str) -> dict:
        CRITICAL LANGUAGE: MUST be conversational Hinglish (Roman script Hindi).
        - Assign each spoken line to the correct scene where it would be heard
        - Target Audience: Indian social media (Instagram Reels / TikTok)
-       - Tone: Funny, expressive, regional Indian meme dialogue
-       - Multi-character: use "Male" and "Female" as speaker labels
+       - Tone: Funny, expressive, regional Indian dialogue
+       - No dialogue: leave list empty.
+       - Multi-character: use "Male" and "Female" as voice labels
+       - DO NOT invent literal names unless they matter to the plot.
        - Decide meme_overlay per line: 'laugh', 'crying', 'vine_boom', or 'none'
        - Expressive Delivery: Include heavy expressive punctuation (!, ?, ..., ,) so the TTS voice engine generates natural breath pauses and conversational cadence.
        - TOTAL dialogue across all scenes: MINIMUM 40 words, MAXIMUM 60 words (Must span at least 15 seconds of speech)

@@ -111,9 +111,16 @@ export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string)
     const [isGenerating, setIsGenerating] = useState(false);
     const [generationProgress, setGenerationProgress] = useState<string>('');
     const [finalVideoUrl, setFinalVideoUrl] = useState<string | null>(null);
+    const [telemetryLogs, setTelemetryLogs] = useState<Array<{ time: string; msg: string; type: string }>>([]);
+    const [currentSceneNum, setCurrentSceneNum] = useState<number>(1);
+    const [totalScenesNum, setTotalScenesNum] = useState<number>(1);
+    const [qualityScore, setQualityScore] = useState<number | null>(null);
+    const [currentStage, setCurrentStage] = useState<string>('Initializing');
+    const [sseConnected, setSseConnected] = useState<boolean>(false);
 
-    // Status-polling lifecycle guard (P2: prevent interval leak on unmount)
+    // Status-polling & SSE lifecycle guards
     const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const eventSourceRef = useRef<EventSource | null>(null);
 
     const stopStatusPolling = () => {
         if (pollIntervalRef.current !== null) {
@@ -122,8 +129,20 @@ export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string)
         }
     };
 
-    // Clear any active poll timer when the wizard unmounts mid-render
-    useEffect(() => stopStatusPolling, []);
+    const closeEventSource = () => {
+        if (eventSourceRef.current !== null) {
+            eventSourceRef.current.close();
+            eventSourceRef.current = null;
+        }
+    };
+
+    // Clear active poll timer & SSE stream when the wizard unmounts
+    useEffect(() => {
+        return () => {
+            stopStatusPolling();
+            closeEventSource();
+        };
+    }, []);
 
     const getAuthHeaders = async () => {
         if (!user) throw new Error("Not logged in");
@@ -350,19 +369,109 @@ export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string)
             });
             const genData = await genRes.json();
 
-            // Poll status (P2: bounded, leak-free polling)
+            // Step 5: Start Live Telemetry Stream via SSE + Fallback Polling
             setStep(5);
+            setTelemetryLogs([]);
+            setCurrentSceneNum(1);
+            setTotalScenesNum(productionBlueprint.scenes?.length || 1);
+            setQualityScore(null);
+            setCurrentStage("Initializing Orchestrator");
+            setSseConnected(false);
+
+            const token = user ? await user.getIdToken() : '';
+            const sseUrl = `${API_BASE_URL}/projects/${projectId}/production-blueprints/${productionBlueprint.blueprint_id}/events?token=${encodeURIComponent(token)}`;
+
+            // Helper to append telemetry log
+            const addLog = (msg: string, type: string = "info") => {
+                const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                setTelemetryLogs(prev => [...prev.slice(-40), { time, msg, type }]);
+            };
+
+            // Connect SSE EventSource
+            try {
+                closeEventSource();
+                const es = new EventSource(sseUrl);
+                eventSourceRef.current = es;
+
+                es.onmessage = (e) => {
+                    if (!e.data) return;
+                    try {
+                        const data = JSON.parse(e.data);
+                        setSseConnected(true);
+
+                        if (data.event === "STREAM_CONNECTED") {
+                            addLog("Connected to backend telemetry stream", "system");
+                        } else if (data.event === "SCENE_START") {
+                            setCurrentSceneNum(data.scene_number || 1);
+                            setCurrentStage(`Scene ${data.scene_id}: Synthesizing Voiceover`);
+                            setGenerationProgress(`Rendering Scene ${data.scene_id}...`);
+                            addLog(`Scene ${data.scene_id} started (${data.expected_duration || 5}s)`, "scene");
+                        } else if (data.event === "AUDIO_SYNTH_COMPLETE") {
+                            setCurrentStage("Generating Veo Clip");
+                            addLog(`ElevenLabs audio ready (${Number(data.audio_duration || 0).toFixed(1)}s)`, "audio");
+                        } else if (data.event === "VEO_CHUNK_SUBMITTED") {
+                            setCurrentStage(`Veo 2.0 Video Gen (Attempt ${data.attempt_number || 1})`);
+                            addLog(`Veo prompt submitted to Vertex AI (Attempt ${data.attempt_number || 1})`, "veo");
+                        } else if (data.event === "QUALITY_REVIEW_SCORED") {
+                            if (typeof data.score === 'number') {
+                                setQualityScore(data.score);
+                            }
+                            const passed = data.passed;
+                            addLog(`QualityReviewer: Score ${Number(data.score || 0).toFixed(1)}/10 (${passed ? 'ACCEPTED' : 'REJECTED'})`, passed ? 'success' : 'warning');
+                        } else if (data.event === "RETRY_ATTEMPTED") {
+                            setCurrentStage(`Quality Retry (${data.retry_number}/${data.max_retries})`);
+                            addLog(`Adaptive retry ${data.retry_number} triggered: ${data.reason || 'Quality below threshold'}`, "warning");
+                        } else if (data.event === "SCENE_NORMALIZED") {
+                            setCurrentStage("Scene Normalized");
+                            addLog(`Scene normalized to timeline (${Number(data.actual_duration || 0).toFixed(1)}s)`, "scene");
+                        } else if (data.event === "ASSEMBLY_START") {
+                            setCurrentStage("Assembling Final Video");
+                            setGenerationProgress("Assembling timeline & normalising scene clips...");
+                            addLog("All scenes complete. Normalizing & concatenating timeline...", "assembly");
+                        } else if (data.event === "ASSEMBLY_COMPLETE") {
+                            closeEventSource();
+                            stopStatusPolling();
+                            setIsGenerating(false);
+                            setCurrentStage("Completed");
+                            const finalUrl = data.output_uri || data.final_video_url;
+                            setFinalVideoUrl(finalUrl);
+                            addLog("Final video certified & generated successfully!", "success");
+                            toast.success("Video generated successfully!");
+                        } else if (data.event === "GENERATION_FAILED" || data.event === "JOB_FAILED") {
+                            closeEventSource();
+                            stopStatusPolling();
+                            setIsGenerating(false);
+                            setCurrentStage("Failed");
+                            addLog(`Generation failed: ${data.error || 'Unknown error'}`, "error");
+                            toast.error("Generation failed. Please check diagnostics.");
+                        }
+                    } catch (parseErr) {
+                        console.debug("[VideoCloner SSE] Parse error:", parseErr);
+                    }
+                };
+
+                es.onerror = () => {
+                    console.debug("[VideoCloner SSE] Stream interrupted, continuing fallback polling.");
+                    setSseConnected(false);
+                };
+            } catch (sseErr) {
+                console.debug("[VideoCloner SSE] Connection error:", sseErr);
+                setSseConnected(false);
+            }
+
+            // Fallback status polling (P2: bounded, leak-free polling)
             const POLL_INTERVAL_MS = 4000;
-            const POLL_TIMEOUT_MS = 20 * 60 * 1000; // multi-scene Veo chains can run long
+            const POLL_TIMEOUT_MS = 20 * 60 * 1000;
             const MAX_CONSECUTIVE_POLL_ERRORS = 5;
             const pollStartedAt = Date.now();
             let consecutivePollErrors = 0;
 
             pollIntervalRef.current = setInterval(async () => {
-                if (pollIntervalRef.current === null) return; // polling already stopped
+                if (pollIntervalRef.current === null) return;
 
                 if (Date.now() - pollStartedAt > POLL_TIMEOUT_MS) {
                     stopStatusPolling();
+                    closeEventSource();
                     setIsGenerating(false);
                     toast.error("Generation timed out after 20 minutes. Check diagnostics.");
                     return;
@@ -377,14 +486,16 @@ export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string)
 
                     if (stData.status === "COMPLETED") {
                         stopStatusPolling();
+                        closeEventSource();
                         setIsGenerating(false);
                         setFinalVideoUrl(stData.output_uri || stData.final_video_url);
                         toast.success("Video generated successfully!");
                     } else if (stData.status === "FAILED") {
                         stopStatusPolling();
+                        closeEventSource();
                         setIsGenerating(false);
                         toast.error("Generation failed. Please check diagnostics.");
-                    } else {
+                    } else if (!sseConnected) {
                         setGenerationProgress(`Rendering scene clips (${stData.status})...`);
                     }
                 } catch (e) {
@@ -392,6 +503,7 @@ export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string)
                     consecutivePollErrors += 1;
                     if (consecutivePollErrors >= MAX_CONSECUTIVE_POLL_ERRORS) {
                         stopStatusPolling();
+                        closeEventSource();
                         setIsGenerating(false);
                         toast.error("Lost connection while checking render status. Please retry.");
                     }
@@ -959,16 +1071,95 @@ export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string)
             {/* STEP 5: PRODUCTION & FINAL VIDEO */}
             {step === 5 && (
                 <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                    <div className="p-8 rounded-2xl bg-white/[0.02] border border-white/[0.08] text-center space-y-6">
+                    <div className="p-6 md:p-8 rounded-2xl bg-white/[0.02] border border-white/[0.08] text-center space-y-6">
                         {isGenerating && (
-                            <div className="space-y-4 py-12">
-                                <Loader2 size={40} className="animate-spin text-indigo-500 mx-auto" />
-                                <div className="space-y-1">
-                                    <h3 className="text-lg font-bold text-white">Rendering Multi-Scene Video</h3>
-                                    <p className="text-xs text-white/50">{generationProgress || "Executing Canonical Generation Engine..."}</p>
+                            <div className="space-y-6 py-4">
+                                {/* Header badge & SSE indicator */}
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Loader2 size={18} className="animate-spin text-indigo-400" />
+                                        <h3 className="text-base font-bold text-white">Live Production Engine</h3>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className={cn(
+                                            "w-2 h-2 rounded-full",
+                                            sseConnected ? "bg-emerald-400 animate-pulse" : "bg-yellow-400"
+                                        )} />
+                                        <span className="text-[11px] font-mono text-white/50">
+                                            {sseConnected ? "SSE LIVE STREAM" : "POLLING ACTIVE"}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="max-w-xs mx-auto p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] text-[11px] text-white/60">
-                                    Strict Phase 8G.1 Contract: ElevenLabs TTS ➔ Veo 2.0 ➔ QualityReviewer ➔ TimelineBuilder
+
+                                {/* Active Stage and Scene Counters */}
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] text-left">
+                                        <span className="text-[10px] uppercase font-bold text-white/40 tracking-wider block">Current Stage</span>
+                                        <span className="text-sm font-semibold text-indigo-300 truncate block mt-0.5">{currentStage}</span>
+                                    </div>
+                                    <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] text-left">
+                                        <span className="text-[10px] uppercase font-bold text-white/40 tracking-wider block">Scene Progress</span>
+                                        <span className="text-sm font-semibold text-white block mt-0.5">
+                                            Scene {currentSceneNum} <span className="text-white/40">/ {totalScenesNum}</span>
+                                        </span>
+                                    </div>
+                                    <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] text-left">
+                                        <span className="text-[10px] uppercase font-bold text-white/40 tracking-wider block">Quality Review</span>
+                                        <span className={cn(
+                                            "text-sm font-bold block mt-0.5",
+                                            qualityScore !== null
+                                                ? qualityScore >= 7.0 ? "text-emerald-400" : "text-yellow-400"
+                                                : "text-white/40"
+                                        )}>
+                                            {qualityScore !== null ? `${qualityScore.toFixed(1)} / 10.0` : "Pending Review"}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Live Progress Bar */}
+                                <div className="space-y-1.5 text-left">
+                                    <div className="flex justify-between text-xs text-white/60">
+                                        <span>Pipeline Progress</span>
+                                        <span>{Math.round((currentSceneNum / Math.max(1, totalScenesNum)) * 100)}%</span>
+                                    </div>
+                                    <div className="w-full h-2 rounded-full bg-white/[0.05] overflow-hidden">
+                                        <motion.div
+                                            className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500"
+                                            animate={{ width: `${Math.min(100, Math.round((currentSceneNum / Math.max(1, totalScenesNum)) * 100))}%` }}
+                                            transition={{ duration: 0.5 }}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Live Telemetry Logs Terminal */}
+                                <div className="p-4 rounded-xl bg-black/60 border border-white/[0.08] text-left font-mono space-y-2">
+                                    <div className="flex items-center justify-between text-[11px] text-white/40 border-b border-white/[0.06] pb-2">
+                                        <span>REAL-TIME TELEMETRY LOGS</span>
+                                        <span>FAIL-CLOSED ARCHITECTURE</span>
+                                    </div>
+                                    <div className="max-h-40 overflow-y-auto space-y-1.5 text-xs">
+                                        {telemetryLogs.length === 0 ? (
+                                            <p className="text-white/30 text-[11px]">Connecting to generation stream...</p>
+                                        ) : (
+                                            telemetryLogs.map((log, i) => (
+                                                <div key={i} className="flex items-start gap-2 text-[11px]">
+                                                    <span className="text-white/30 flex-shrink-0">{log.time}</span>
+                                                    <span className={cn(
+                                                        log.type === "success" && "text-emerald-400",
+                                                        log.type === "warning" && "text-yellow-400",
+                                                        log.type === "error" && "text-red-400",
+                                                        log.type === "veo" && "text-purple-300",
+                                                        log.type === "audio" && "text-blue-300",
+                                                        log.type === "scene" && "text-indigo-300",
+                                                        log.type === "system" && "text-white/60",
+                                                        log.type === "info" && "text-white/80"
+                                                    )}>
+                                                        {log.msg}
+                                                    </span>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         )}

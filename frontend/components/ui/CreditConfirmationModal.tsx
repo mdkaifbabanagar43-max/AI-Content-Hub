@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, Coins, Check, X, ShieldCheck } from 'lucide-react';
+import { AlertCircle, Coins, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CreditConfirmationModalProps {

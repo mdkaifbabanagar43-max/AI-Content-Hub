@@ -4,7 +4,6 @@ Download videos from YouTube, TikTok, Instagram, etc. using shared secure video 
 """
 import os
 import uuid
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -51,7 +50,7 @@ async def import_video_url(
         # Upload to GCS
         gcs_blob_name = output_filename
         print(f"[URL Import] Uploading to GCS: {gcs_blob_name}")
-        gcs_url = upload_to_gcs(output_path, gcs_blob_name)
+        upload_to_gcs(output_path, gcs_blob_name)
 
         return {
             "gcs_path": gcs_blob_name,

@@ -15,7 +15,9 @@ class CameraDirection(BaseModel):
 
 class DialogueLine(BaseModel):
     character_id: str = "char_lead_1"
-    voice_id: str = "default_voice"
+    voice_id: Optional[str] = None
+    voice_label: Optional[str] = "default_voice"
+    provider_voice_id: Optional[str] = None
     text: str = ""
     emotion: Optional[str] = "neutral"
     delivery_style: Optional[str] = "natural"
@@ -75,12 +77,12 @@ class SceneBlueprint(BaseModel):
         if isinstance(v, str):
             if not v.strip():
                 return []
-            return [{"text": v.strip(), "character_id": "char_lead_1", "voice_id": "default_voice", "estimated_duration_seconds": 3.0}]
+            return [{"text": v.strip(), "character_id": "char_lead_1", "voice_id": "default_voice", "voice_label": "default_voice", "estimated_duration_seconds": 3.0}]
         if isinstance(v, list):
             res = []
             for item in v:
                 if isinstance(item, str):
-                    res.append({"text": item.strip(), "character_id": "char_lead_1", "voice_id": "default_voice", "estimated_duration_seconds": 3.0})
+                    res.append({"text": item.strip(), "character_id": "char_lead_1", "voice_id": "default_voice", "voice_label": "default_voice", "estimated_duration_seconds": 3.0})
                 else:
                     res.append(item)
             return res

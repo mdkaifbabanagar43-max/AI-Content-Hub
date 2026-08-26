@@ -6,7 +6,6 @@ VisualIdentityPack, CharacterVisualIdentity multi-angle sheets,
 EnvironmentVisualIdentity, and PropVisualIdentity.
 """
 import uuid
-import datetime
 from typing import Optional, List, Dict, Any
 
 from core.models.visual_identity import (

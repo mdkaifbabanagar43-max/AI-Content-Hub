@@ -4,7 +4,6 @@ from unittest.mock import MagicMock, patch
 from core.models.context import GenerationContext
 from core.models.scene import Scene
 from core.models.character import Character
-from core.models.character_asset import CharacterAsset
 from core.models.style import Style
 from core.models.location import Location
 from core.models.prop import Prop

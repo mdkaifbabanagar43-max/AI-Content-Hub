@@ -5,7 +5,7 @@ Vertex AI / Gemini model handling extracted from main.py
 import os
 import re
 import json
-from typing import Optional, List
+from typing import List
 from config import ModelRoutingConfig
 from core.telemetry import log_model_telemetry
 

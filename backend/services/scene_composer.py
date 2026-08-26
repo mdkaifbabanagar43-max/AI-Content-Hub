@@ -8,7 +8,7 @@ CRITICAL: Every prompt includes the GLOBAL_STYLE_BLOCK verbatim.
 """
 import re
 import logging
-from typing import List, Dict, Optional
+from typing import List, Optional
 from dataclasses import dataclass
 
 logger = logging.getLogger("scene_composer")

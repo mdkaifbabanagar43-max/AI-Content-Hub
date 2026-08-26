@@ -147,7 +147,6 @@ def validate_blueprint_originality(
         max_allowed_similarity = ORIGINALITY_THRESHOLD
     # Check preservation compliance if specified on blueprint or arguments
     char_preserved = preserve_characters if preserve_characters is not None else getattr(production_bp, 'preserve_characters', None)
-    env_preserved = preserve_environment if preserve_environment is not None else getattr(production_bp, 'preserve_environment', None)
     
     # 1. Source Character Reuse Check when characters are NOT preserved
     if char_preserved is False:

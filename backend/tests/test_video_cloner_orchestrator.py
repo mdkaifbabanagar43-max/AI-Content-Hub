@@ -3,9 +3,7 @@ from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
 
 from main import app
-from core.models.source_analysis import SourceAnalysis
 from core.models.blueprint import ProductionBlueprint, SceneBlueprint, QualityStrategy, GenerationStrategy
-from core.models.transformation import ProductionTransformationRequest
 
 client = TestClient(app)
 

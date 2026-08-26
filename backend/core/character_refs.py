@@ -16,7 +16,6 @@ Document fields:
 """
 
 from datetime import datetime, timezone
-from typing import Optional
 
 
 def get_or_create_character_ref(

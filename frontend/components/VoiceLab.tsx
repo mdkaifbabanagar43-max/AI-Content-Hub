@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Play, Download, Sliders, Activity, Disc, Loader2, Lock } from 'lucide-react';
+import { Mic, Play, Download, Sliders, Activity, Disc, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
 import { API_BASE_URL } from '@/lib/config';
 import { handleAppError } from '@/lib/errorHandler';
 import { usePermission } from '@/hooks/usePermission';

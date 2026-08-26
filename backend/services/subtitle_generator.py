@@ -1,5 +1,4 @@
 
-import math
 from typing import List
 
 
@@ -228,14 +227,11 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 # Let's default to that as it's safest and most "Viral".
                 # 1 chunk = 1 subtitle event.
                 # Highlight logic: If we want "Karaoke", we need to split this chunk into mini-events.
-                
-                current_time = chunk_start
                 # We need to hold the text on screen from chunk_start to chunk_end.
                 # But we change formatting as we progress.
                 
                 for w_idx, active_word in enumerate(chunk):
                     w_start = active_word['start']
-                    w_end = active_word['end']
                     
                     # Build text string
                     formatted_text = ""

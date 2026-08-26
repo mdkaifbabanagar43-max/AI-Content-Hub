@@ -1,15 +1,12 @@
-import pytest
 from unittest.mock import patch, MagicMock
 from core.models.context import GenerationContext
-from core.models.blueprint import SceneBlueprint, CameraDirection
+from core.models.blueprint import SceneBlueprint
 from core.models.character import Character
-from core.models.character_asset import CharacterAsset
 from core.services.bible_loader import ResolvedScene
-from core.services.reference_manager import ReferenceManager, ReferenceResolutionResult
+from core.services.reference_manager import ReferenceManager
 from core.services.canonical_generation_engine import (
     CanonicalGenerationEngine,
-    CanonicalGenerationRequest,
-    CanonicalGenerationResult
+    CanonicalGenerationRequest
 )
 from core.services.quality_reviewer import QualityReviewResult
 

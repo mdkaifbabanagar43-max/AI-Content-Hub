@@ -2,7 +2,7 @@ import os
 import cv2
 import json
 import re
-from typing import List, Tuple
+from typing import List
 from moviepy.editor import VideoFileClip
 from scenedetect import detect, ContentDetector
 from pydantic import BaseModel, Field

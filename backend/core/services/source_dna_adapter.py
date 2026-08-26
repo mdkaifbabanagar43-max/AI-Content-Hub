@@ -17,7 +17,7 @@ All derivations are deterministic pure functions of their inputs (no I/O,
 no LLM calls) so parity is testable forever.
 """
 import re
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional
 
 from core.models.clone_blueprint import CloneBlueprint
 from core.models.dna import (

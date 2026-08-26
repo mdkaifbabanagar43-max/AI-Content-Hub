@@ -1,19 +1,15 @@
 try:
-    import moviepy.editor
+    pass
 except Exception:
     pass
 
-import pytest
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch, MagicMock
 import math
-import os
-import sys
 
-from services.trend_remixer import _sanitize_veo_prompt, _is_animated_style
+from services.trend_remixer import _sanitize_veo_prompt
 from core.services.timeline_builder import TimelineBuilder
 from core.models.timeline import AudioAsset
-from core.models.state import SceneState
-from core.models.blueprint import SceneBlueprint, QualityStrategy, CameraDirection, DialogueLine
+from core.models.blueprint import SceneBlueprint, QualityStrategy, DialogueLine
 
 
 # ─────────────────────────────────────────────────────────────
@@ -180,7 +176,7 @@ def test_quality_review_isolation_in_video_cloner(
             narrative_purpose="test",
             estimated_duration_seconds=5.0
         )
-    scene.dialogue = [DialogueLine(text="Hello", voice_id="v1", character_id="c1", emotion="happy", delivery_style="casual", estimated_duration_seconds=3.0)]
+    scene.dialogue = [DialogueLine(text="Hello", voice_label="v1", character_id="c1", emotion="happy", delivery_style="casual", estimated_duration_seconds=3.0)]
     bp.scenes = [scene]
     bp.quality_strategy = QualityStrategy(max_retries=1)
     mock_bp_repo.get.return_value = bp

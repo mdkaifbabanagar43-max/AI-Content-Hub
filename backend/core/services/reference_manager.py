@@ -1,16 +1,14 @@
-import os
 import uuid
 import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional
 from pydantic import BaseModel
 
 from core.models.context import GenerationContext
 from core.services.bible_loader import ResolvedScene
 from core.models.character_asset import CharacterAsset
-from core.models.character import Character
 from core.firestore_client import get_db
 from core.models.operation_state import OperationStatus, ErrorCategory
-from core.exceptions import CharacterReferenceError, ReferenceValidationError
+from core.exceptions import CharacterReferenceError
 
 class ReferenceResolutionResult(BaseModel):
     reference_uri: Optional[str] = None

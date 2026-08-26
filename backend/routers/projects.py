@@ -2,12 +2,12 @@
 Projects Router
 Save and retrieve user projects
 """
-from fastapi import APIRouter, Depends, HTTPException, Form
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from firebase_admin import firestore
 
 from core.auth import get_current_user
-from core.firestore_client import db, get_user_projects, save_project
+from core.firestore_client import db, get_user_projects
 
 router = APIRouter()
 

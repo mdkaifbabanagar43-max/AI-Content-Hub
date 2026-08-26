@@ -1,9 +1,6 @@
 import os
 import asyncio
-import random
-import time
 import subprocess
-import tempfile
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
 # STRICT LIMIT: Only 1 request to Gemini at a time.

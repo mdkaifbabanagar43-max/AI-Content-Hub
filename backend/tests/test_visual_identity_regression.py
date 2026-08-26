@@ -5,10 +5,9 @@ Tests for _sanitize_veo_prompt signature compatibility (default behavior,
 is_animated=True, is_animated=False, positional callers, keyword callers)
 and VisualIdentityPack construction.
 """
-import pytest
 from unittest.mock import MagicMock, patch
 
-from services.trend_remixer import _sanitize_veo_prompt, _is_animated_style
+from services.trend_remixer import _sanitize_veo_prompt
 from core.services.visual_identity_service import VisualIdentityService
 
 

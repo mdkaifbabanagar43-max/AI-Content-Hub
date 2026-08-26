@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Twitter, Github, Disc as Discord, Shield, Cloud, Server, Cpu, CheckCircle2, Lock, ArrowUpRight } from 'lucide-react';
+import { Twitter, Github, Disc as Discord, Shield, Cloud, Server, Cpu, ArrowUpRight } from 'lucide-react';
 
 export default function Footer() {
     return (

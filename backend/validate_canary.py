@@ -2,7 +2,6 @@ import os
 import sys
 import time
 import uuid
-import json
 import requests
 
 from config import ModelRoutingConfig
@@ -25,7 +24,7 @@ def get_auth_token_for_test_user():
                 data = resp.json()
                 return data["idToken"], data["localId"]
             time.sleep(2)
-        except Exception as e:
+        except Exception:
             if attempt == 4:
                 raise
             time.sleep(2)

@@ -4,6 +4,7 @@ from datetime import datetime
 
 class Voice(BaseModel):
     voice_id: str
+    voice_label: Optional[str] = None
     character_id: str
     provider: str = "elevenlabs"
     provider_voice_id: str

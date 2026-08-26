@@ -53,7 +53,7 @@ def test_scene_bp_scope_regression(
         run_trend_cloner_job(req, "user123", "job123")
     except UnboundLocalError as e:
         pytest.fail(f"UnboundLocalError occurred: {e}")
-    except Exception as e:
+    except Exception:
         # Catch other exceptions as the test might fail later in the function due to other mocks not being perfect.
         # We only care that it got past the QualityReviewer's `scene_bp` check.
         pass

@@ -1,42 +1,33 @@
 'use client';
 
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
     Sparkles,
     Zap,
     Mic,
-    Globe,
     ArrowRight,
-    Play,
     Terminal,
     CheckCircle2,
-    XCircle,
     Users,
     Briefcase,
     Lock,
-    Eye,
     Video,
     Cpu,
     Server,
     Database,
     Cloud,
-    Shield,
     Layers,
     Copy,
     Check,
     Flame,
-    Film,
     Code2,
     Workflow,
-    Building2,
-    Crown,
-    ExternalLink
+    Building2
 } from 'lucide-react';
 import Navbar from './Navbar';
 import Footer from './Footer';
 import Pricing from './Pricing';
-import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 export default function LandingPage({ onSignInClick }: { onSignInClick: () => void }) {

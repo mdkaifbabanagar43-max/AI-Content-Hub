@@ -1,8 +1,4 @@
 import pytest
-import datetime
-from core.models.clone_blueprint import (
-    CloneBlueprint, CloneSceneBlueprint, CloneShot, NarrativeBeat, PacingProfile
-)
 from core.models.source_analysis import (
     SourceAnalysis, SourceMediaMetadata, SourceSceneSegment, SceneSemanticAnalysis,
     HookAnalysis, CTAAnalysis, SourceAudioProfile, SourceVisualStyle

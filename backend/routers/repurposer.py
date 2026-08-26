@@ -7,13 +7,10 @@ import re
 import json
 import time
 import uuid
-import glob
-import shutil
 import traceback
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, HTTPException, Form, BackgroundTasks
 from pydantic import BaseModel
 
 from core.auth import get_current_user

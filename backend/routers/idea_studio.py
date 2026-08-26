@@ -3,7 +3,6 @@ Idea Studio Router
 Brainstorm, script generation, preview, and video rendering endpoints
 """
 import os
-import re
 import json
 import base64
 import uuid
@@ -12,8 +11,7 @@ import itertools
 import datetime
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, Form
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List, Any
 
@@ -22,9 +20,8 @@ from core.firestore_client import (
     get_user_profile, create_job, update_job_status, 
     get_active_job_count, db
 )
-from core.storage_client import upload_to_gcs, UPLOAD_BUCKET
+from core.storage_client import upload_to_gcs
 from core.plan_limits import get_plan_limits, enforce_rendering_params
-from config import PLAN_CAPABILITIES
 from permissions import validate_feature_access
 from services.ai_service import (
     generate_brainstorm_angles, generate_video_ideas,

@@ -1,7 +1,6 @@
 import json
-import os
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List
 try:
     from PIL import Image
 except ImportError:

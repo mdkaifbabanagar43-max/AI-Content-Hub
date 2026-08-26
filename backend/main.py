@@ -32,7 +32,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # --- APP INITIALIZATION ---
-from fastapi.staticfiles import StaticFiles
 from config import TEMP_DIR
 
 is_production = os.getenv("ENVIRONMENT", "development").lower() == "production"
@@ -115,7 +114,7 @@ def cleanup_temp_files():
 cleanup_temp_files()
 
 # --- AUTHENTICATED JOB STATUS ENDPOINT ---
-from fastapi import Request, Depends, HTTPException
+from fastapi import Depends, HTTPException
 from core.auth import get_current_user
 from core.firestore_client import get_job_status
 

@@ -1,7 +1,7 @@
 import pytest
-from core.models.clone_blueprint import CloneBlueprint, CloneSceneBlueprint, CloneShot, NarrativeBeat, PacingProfile
+from core.models.clone_blueprint import CloneBlueprint, CloneSceneBlueprint, NarrativeBeat, PacingProfile
 from core.models.source_analysis import HookAnalysis, SourceVisualStyle, SourceAudioProfile, CTAAnalysis
-from core.models.blueprint import ProductionBlueprint, SceneBlueprint, CameraDirection, DialogueLine
+from core.models.blueprint import ProductionBlueprint, SceneBlueprint, DialogueLine
 from core.services.originality_validator import (
     validate_blueprint_originality,
     compute_narrative_similarity,

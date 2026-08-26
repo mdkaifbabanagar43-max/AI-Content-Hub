@@ -8,7 +8,7 @@ import re
 import socket
 import ipaddress
 import urllib.parse
-from typing import Optional, List, Set, Tuple
+from typing import Optional, List, Tuple
 import requests
 
 # Blocked IP Networks (IPv4 & IPv6)

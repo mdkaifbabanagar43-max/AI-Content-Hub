@@ -8,7 +8,6 @@ Automated regression tests validating security remediations:
 - Rate limiting protection
 - Provider secret boundaries
 """
-import os
 import pytest
 from fastapi.testclient import TestClient
 
@@ -17,8 +16,7 @@ from core.security import (
     validate_public_url,
     detect_anchored_platform,
     is_ip_blocked,
-    SSRFValidationError,
-    safe_download_stream
+    SSRFValidationError
 )
 from core.rate_limiter import InMemoryRateLimiter
 

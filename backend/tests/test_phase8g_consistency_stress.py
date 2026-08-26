@@ -1,6 +1,4 @@
-import pytest
 from unittest.mock import patch, MagicMock
-import os
 
 from core.models.context import GenerationContext
 from core.models.blueprint import (
@@ -11,16 +9,9 @@ from core.models.blueprint import (
     QualityStrategy
 )
 from core.models.character import Character
-from core.models.voice import Voice
 from core.services.bible_loader import ResolvedScene
 from core.services.reference_manager import ReferenceManager
 from core.services.prompt_compiler import PromptCompiler
-from core.services.canonical_generation_engine import (
-    CanonicalGenerationEngine,
-    CanonicalGenerationRequest,
-    CanonicalGenerationResult
-)
-from core.services.quality_reviewer import QualityReviewResult
 from core.services.timeline_builder import TimelineBuilder
 from services.trend_remixer import _sanitize_veo_prompt
 
@@ -76,7 +67,7 @@ def build_phase8g_test_blueprint() -> ProductionBlueprint:
             dialogue=[
                 DialogueLine(
                     character_id="char_padlock_male",
-                    voice_id="voice_male_01",
+                    voice_label="voice_male_01",
                     text="Did you remember the lock?",
                     emotion="curious",
                     delivery_style="comedic",

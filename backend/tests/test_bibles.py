@@ -1,13 +1,7 @@
-import pytest
 from unittest.mock import MagicMock, patch
-from datetime import datetime
 
 from core.models.character import Character, CharacterAppearance
-from core.models.character_asset import CharacterAsset
 from core.models.voice import Voice
-from core.models.style import Style
-from core.models.location import Location
-from core.models.prop import Prop
 from core.models.scene import Scene
 from core.repositories.character_repo import CharacterRepository
 

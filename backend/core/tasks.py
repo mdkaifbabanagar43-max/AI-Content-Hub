@@ -63,7 +63,6 @@ def enqueue_generation_task(user_id: str, project_id: str, blueprint_id: str, jo
     }
     
     try:
-        from google.api_core.exceptions import AlreadyExists
         response = client.create_task(
             request={"parent": parent, "task": task}
         )

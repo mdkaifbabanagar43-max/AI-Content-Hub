@@ -1,14 +1,12 @@
 
-import os
 import re
 import json
 import traceback
-from typing import List, Dict, Optional
-import os
+from typing import List, Dict
 import re
 import json
 import traceback
-from typing import List, Dict, Optional
+from typing import List, Dict
 from services.ai_service import generate_text
 
 class SceneEngine:

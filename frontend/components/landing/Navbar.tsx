@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Menu, X, ArrowRight, ShieldCheck, Cpu, Terminal, Sparkles } from 'lucide-react';
+import { Menu, X, ArrowRight, Cpu, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 

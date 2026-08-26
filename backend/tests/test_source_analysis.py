@@ -1,11 +1,10 @@
 import os
 import pytest
-from unittest.mock import patch, MagicMock
-from core.models.source_analysis import SourceAnalysis, SourceMediaMetadata
+from unittest.mock import patch
+from core.models.source_analysis import SourceAnalysis
 from services.source_analyzer import (
     probe_media_metadata,
     detect_scene_segments,
-    analyze_semantics,
     run_source_analysis,
     GeminiSemanticResponse
 )

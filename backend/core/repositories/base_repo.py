@@ -1,5 +1,4 @@
 from typing import TypeVar, Generic, Type, Optional, List
-from google.cloud import firestore
 from pydantic import BaseModel
 from core.firestore_client import get_db
 

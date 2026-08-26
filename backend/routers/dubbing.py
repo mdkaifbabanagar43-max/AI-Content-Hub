@@ -7,7 +7,6 @@ import uuid
 import time
 import shutil
 import traceback
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import JSONResponse

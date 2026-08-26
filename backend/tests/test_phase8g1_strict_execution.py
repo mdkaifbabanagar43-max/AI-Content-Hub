@@ -11,27 +11,23 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.models.operation_state import OperationStatus, ErrorCategory, CENTRAL_FALLBACK_POLICIES
 from core.exceptions import (
     CharacterReferenceError,
-    ReferenceValidationError,
     VeoGenerationError,
     AudioGenerationError,
     LipSyncError,
     QualityReviewError,
-    TimelineExecutionException,
-    AssemblyException
+    TimelineExecutionException
 )
 from core.models.attempt import GenerationAttempt
 from core.models.context import GenerationContext
 from core.services.bible_loader import ResolvedScene
 from core.models.character import Character
 from core.models.scene import Scene
-from core.services.reference_manager import ReferenceManager, ReferenceResolutionResult
+from core.services.reference_manager import ReferenceManager
 from core.services.canonical_generation_engine import (
     CanonicalGenerationEngine,
-    CanonicalGenerationRequest,
-    CanonicalGenerationResult
+    CanonicalGenerationRequest
 )
 from core.services.timeline_builder import TimelineBuilder
-from core.models.timeline import AudioAsset
 
 
 @pytest.fixture

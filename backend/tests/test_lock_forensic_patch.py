@@ -1,18 +1,13 @@
-import pytest
 from unittest.mock import patch, MagicMock
-import math
-import os
 
-from core.models.blueprint import ProductionBlueprint, SceneBlueprint, QualityStrategy, GenerationStrategy, DialogueLine, CameraDirection
-from core.models.clone_blueprint import CloneBlueprint, CloneSceneBlueprint, CloneShot, PacingProfile
-from core.models.source_analysis import SourceAnalysis, SourceVisualStyle, SourceMediaMetadata, HookAnalysis, CTAAnalysis, SourceAudioProfile
+from core.models.blueprint import ProductionBlueprint, SceneBlueprint, QualityStrategy, DialogueLine
 from core.models.context import GenerationContext
 from core.services.bible_loader import ResolvedScene
 from core.models.character import Character
 from core.models.location import Location
 from core.services.prompt_compiler import PromptCompiler
 from core.services.reference_manager import ReferenceManager
-from services.trend_remixer import _sanitize_veo_prompt, _is_animated_style
+from services.trend_remixer import _sanitize_veo_prompt
 from core.services.timeline_builder import TimelineBuilder
 from core.models.timeline import AudioAsset
 from routers.video_cloner import run_production_job
@@ -253,7 +248,7 @@ def test_group_4_retry_isolation(
         quality_strategy=QualityStrategy(max_retries=1)
     )
     scene = SceneBlueprint(scene_id="s1", scene_number=1, action="Action", narrative_purpose="Hook", estimated_duration_seconds=5.0)
-    scene.dialogue = [DialogueLine(text="Hello", voice_id="v1", character_id="c1", emotion="neutral", delivery_style="casual", estimated_duration_seconds=2.0)]
+    scene.dialogue = [DialogueLine(text="Hello", voice_label="v1", character_id="c1", emotion="neutral", delivery_style="casual", estimated_duration_seconds=2.0)]
     bp.scenes = [scene]
     mock_bp_repo.get.return_value = bp
 

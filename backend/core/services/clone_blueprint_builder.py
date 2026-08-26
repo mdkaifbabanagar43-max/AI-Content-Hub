@@ -1,7 +1,7 @@
 import uuid
-from typing import List, Dict
+from typing import List
 
-from core.models.source_analysis import SourceAnalysis, SourceSceneSegment, SceneSemanticAnalysis
+from core.models.source_analysis import SourceAnalysis
 from core.models.clone_blueprint import (
     CloneBlueprint, 
     CloneSceneBlueprint, 

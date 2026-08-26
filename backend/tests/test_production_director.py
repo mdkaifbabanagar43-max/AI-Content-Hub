@@ -1,11 +1,10 @@
 import pytest
 import json
-import uuid
 from unittest.mock import patch, MagicMock
 from fastapi import HTTPException
 from pydantic import ValidationError
 
-from core.models.blueprint import ProductionBlueprint, SceneBlueprint, CameraDirection, ContinuityRequirement, DialogueLine, QualityStrategy
+from core.models.blueprint import ProductionBlueprint, SceneBlueprint, CameraDirection, ContinuityRequirement, DialogueLine
 from core.models.context import GenerationContext
 from core.models.character import Character, CharacterAppearance, CharacterClothing
 from core.models.location import Location
@@ -14,8 +13,7 @@ from core.models.voice import Voice
 from core.models.style import Style
 from core.models.scene import Scene
 from core.models.attempt import GenerationAttempt
-from core.models.state import SceneState
-from core.services.production_director import ProductionDirector, BlueprintValidationException
+from core.services.production_director import ProductionDirector
 from core.services.prompt_compiler import PromptCompiler
 from core.repositories.blueprint_repo import BlueprintRepository
 from routers.director import VALID_STATUS_TRANSITIONS
@@ -104,7 +102,7 @@ def test_director_entity_validation_security_cross_project(mock_loader_class):
     mock_loader.load_all_bibles.return_value = {
         "characters": [Character(character_id="CHAR_001", project_id="proj_A", name="Alice")],
         "locations": [Location(location_id="LOC_001", project_id="proj_A", name="Office")],
-        "voices": [Voice(voice_id="VOICE_001", project_id="proj_A", character_id="CHAR_001", provider_voice_id="pvid")],
+        "voices": [Voice(voice_id="VOICE_001", voice_label="VOICE_001", project_id="proj_A", character_id="CHAR_001", provider_voice_id="pvid")],
         "props": [Prop(prop_id="PROP_001", project_id="proj_A", name="Phone")],
         "styles": [Style(style_id="STYLE_001", project_id="proj_A", name="Noir")]
     }
@@ -138,7 +136,7 @@ def test_director_entity_validation_scene_level_and_references(mock_loader_class
     mock_loader.load_all_bibles.return_value = {
         "characters": [Character(character_id="CHAR_001", project_id="proj", name="Hero")],
         "locations": [Location(location_id="LOC_001", project_id="proj", name="Cave")],
-        "voices": [Voice(voice_id="VOICE_001", project_id="proj", character_id="CHAR_001", provider_voice_id="pvid")],
+        "voices": [Voice(voice_id="VOICE_001", voice_label="VOICE_001", project_id="proj", character_id="CHAR_001", provider_voice_id="pvid")],
         "props": [Prop(prop_id="PROP_001", project_id="proj", name="Sword")],
         "styles": [Style(style_id="STYLE_001", project_id="proj", name="Cinematic")]
     }
@@ -168,7 +166,7 @@ def test_director_entity_validation_scene_level_and_references(mock_loader_class
                 dialogue=[
                     DialogueLine(
                         character_id="INVALID_SPEAKER",
-                        voice_id="INVALID_VOICE",
+                        voice_label="INVALID_VOICE",
                         text="Hi",
                         emotion="neutral",
                         delivery_style="normal",
@@ -390,7 +388,7 @@ def test_production_director_end_to_end_approval_flow(mock_loader_class, mock_ge
     mock_loader.load_all_bibles.return_value = {
         "characters": [Character(character_id="CHAR_001", project_id="proj", name="Hero")],
         "locations": [Location(location_id="LOC_001", project_id="proj", name="Cave")],
-        "voices": [Voice(voice_id="VOICE_001", project_id="proj", character_id="CHAR_001", provider_voice_id="pvid")],
+        "voices": [Voice(voice_id="VOICE_001", voice_label="VOICE_001", project_id="proj", character_id="CHAR_001", provider_voice_id="pvid")],
         "props": [Prop(prop_id="PROP_001", project_id="proj", name="Sword")],
         "styles": [Style(style_id="STYLE_001", project_id="proj", name="Cinematic")]
     }

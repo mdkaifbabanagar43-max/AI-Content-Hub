@@ -1,4 +1,3 @@
-import pytest
 from core.models.scene import Scene
 from core.models.timeline import AudioAsset
 from core.services.timeline_builder import TimelineBuilder

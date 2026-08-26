@@ -1,7 +1,5 @@
-import pytest
 from unittest.mock import patch, MagicMock
 from services.asset_generator import generate_character_reference
-from config import ModelRoutingConfig
 
 def test_generate_character_reference_gemini_success():
     """Validates successful generation using Gemini generate_content multimodal path."""

@@ -4,15 +4,12 @@ Verifies SSRF validation, anchored platform detection, modernized yt-dlp invocat
 deterministic strategy (yt-dlp primary, RapidAPI fallback), duration caps, error handling, and security blocking.
 """
 import os
-import subprocess
 import pytest
 from unittest.mock import patch, MagicMock
 
 from core.video_downloader import (
     download_video,
-    DownloadResult,
     MOBILE_USER_AGENT,
-    MAX_DURATION_SECONDS,
     _sanitize_url_for_log,
 )
 from core.security import (

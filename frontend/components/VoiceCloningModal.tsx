@@ -2,10 +2,9 @@
 
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, UploadCloud, Mic, CheckCircle2, Loader2, FileAudio } from 'lucide-react';
+import { X, UploadCloud, Mic, CheckCircle2, FileAudio } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import { cn } from '@/lib/utils';
-import { API_BASE_URL } from '@/lib/config';
 
 interface VoiceCloningModalProps {
     isOpen: boolean;

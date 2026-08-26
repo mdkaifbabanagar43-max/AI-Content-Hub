@@ -5,7 +5,6 @@ from core.models.clone_blueprint import (
     CloneBlueprint, CloneSceneBlueprint, CloneShot, NarrativeBeat, PacingProfile
 )
 from core.models.source_analysis import HookAnalysis, CTAAnalysis, SourceAudioProfile, SourceVisualStyle
-from core.models.blueprint import ProductionBlueprint, SceneBlueprint, DialogueLine
 from core.models.transformation import ProductionTransformationRequest
 from core.services.production_director import ProductionDirector, MissingAssetException
 import json

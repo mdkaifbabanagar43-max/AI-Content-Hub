@@ -1,14 +1,12 @@
 import os
 import uuid
-import math
-from typing import List, Dict, Any, Optional
+from typing import List
 from unittest.mock import MagicMock
 
 from core.models.timeline import ProductionTimeline, TimelineItem, AudioAsset
 from core.models.scene import Scene
 from config import TEMP_DIR
 from core.exceptions import TimelineExecutionException, LipSyncError
-from core.models.operation_state import OperationStatus, ErrorCategory
 
 class TimelineValidationException(TimelineExecutionException):
     pass

@@ -13,13 +13,11 @@ DOES NOT:
 - call SyncLabs
 """
 import os
-import sys
 import time
 import uuid
 import json
 import requests
 
-from config import ModelRoutingConfig
 from core.services.originality_validator import (
     compute_narrative_similarity,
     validate_blueprint_originality,
@@ -45,7 +43,7 @@ def get_auth_token():
                 data = resp.json()
                 return data["idToken"], data["localId"]
             time.sleep(2)
-        except Exception as e:
+        except Exception:
             if attempt == 4:
                 raise
             time.sleep(2)

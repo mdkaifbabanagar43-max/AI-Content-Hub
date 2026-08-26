@@ -12,6 +12,7 @@ from core.services.quality_reviewer import QualityReviewer
 from core.services.timeline_builder import TimelineBuilder
 from config import TEMP_DIR, ModelRoutingConfig, MAX_SCENE_QUALITY_RETRIES
 from core.telemetry import log_model_telemetry
+from core.services.telemetry_broadcaster import broadcast_event
 
 from unittest.mock import MagicMock
 
@@ -64,7 +65,7 @@ class CanonicalGenerationRequest(BaseModel):
     character_design: str
     reference_image_uri: Optional[str] = None
     dialogue_text: str = ""
-    speaker: str = "Male"
+    voice_label: str = "Male"
     quality_priority: str = "BALANCED"
     use_lip_sync: bool = False
     allow_lip_sync_fallback: bool = False
@@ -133,6 +134,21 @@ class CanonicalGenerationEngine:
         timeline_builder = TimelineBuilder(req.project_id)
         operation_records: Dict[str, OperationRecord] = {}
 
+        try:
+            broadcast_event(
+                req.job_id,
+                "SCENE_START",
+                {
+                    "scene_id": req.scene_id,
+                    "expected_duration": req.expected_duration,
+                    "quality_priority": req.quality_priority,
+                    "use_lip_sync": req.use_lip_sync,
+                    "status": "PROCESSING"
+                }
+            )
+        except Exception:
+            pass
+
         # -------------------------------------------------------------
         # 1. ElevenLabs Voice Generation Contract (Fail-Closed)
         # -------------------------------------------------------------
@@ -155,7 +171,7 @@ class CanonicalGenerationEngine:
             print(f"[CanonicalEngine] Generating audio for scene {req.scene_id}...")
             
             try:
-                voice_id = VOICE_MAP.get(req.speaker, "IKne3meq5aSn9XLyUdCD")
+                voice_id = VOICE_MAP.get(req.voice_label, "IKne3meq5aSn9XLyUdCD")
                 
                 log_model_telemetry(
                     task="VOICE_GENERATION",
@@ -195,7 +211,7 @@ class CanonicalGenerationEngine:
                                 raise AudioGenerationError(f"ElevenLabs audio duration unreadable or zero ({dur})")
                     except AudioGenerationError:
                         raise
-                    except Exception as clip_err:
+                    except Exception:
                         if not is_mock_tts and not os.path.exists(audio_path):
                             raise AudioGenerationError(f"ElevenLabs audio file is missing for scene {req.scene_id}: {audio_path}")
                         audio_duration = 3.0
@@ -208,6 +224,20 @@ class CanonicalGenerationEngine:
                 audio_op.completed_at = datetime.datetime.now(datetime.timezone.utc)
                 audio_op.output_reference = audio_path
                 audio_op.metadata["duration"] = audio_duration
+
+                try:
+                    broadcast_event(
+                        req.job_id,
+                        "AUDIO_SYNTH_COMPLETE",
+                        {
+                            "scene_id": req.scene_id,
+                            "audio_duration": audio_duration,
+                            "status": "SUCCEEDED",
+                            "provider": "ElevenLabs"
+                        }
+                    )
+                except Exception:
+                    pass
             except Exception as e:
                 audio_op.status = OperationStatus.FAILED
                 audio_op.error_type = ErrorCategory.AUDIO_GENERATION_FAILED
@@ -274,6 +304,21 @@ class CanonicalGenerationEngine:
                 print(f"[CanonicalEngine] Attempt {attempt+1} adaptive prompt modifier: {modifier}")
 
             print(f"[CanonicalEngine] Generating RAW Veo video for scene {req.scene_id} (Attempt {attempt+1})")
+            
+            try:
+                broadcast_event(
+                    req.job_id,
+                    "VEO_CHUNK_SUBMITTED",
+                    {
+                        "scene_id": req.scene_id,
+                        "attempt_number": attempt + 1,
+                        "target_duration": target_veo_duration,
+                        "model": veo_model,
+                        "status": "GENERATING_VEO"
+                    }
+                )
+            except Exception:
+                pass
             
             attempt_id = f"attempt_{req.job_id}_{req.scene_id}_{attempt+1}"
             attempt_doc = GenerationAttempt(
@@ -348,8 +393,25 @@ class CanonicalGenerationEngine:
                 last_review = review
                 
                 attempt_doc.quality_review_id = f"qr_{uuid.uuid4().hex[:8]}"
-                attempt_doc.score = getattr(review, "overall", getattr(review, "overall_score", 8.0))
+                score_val = getattr(review, "overall", getattr(review, "overall_score", 8.0))
+                attempt_doc.score = score_val
                 attempt_doc.quality_review = review.model_dump() if hasattr(review, "model_dump") else review.dict() if hasattr(review, "dict") else None
+                
+                try:
+                    broadcast_event(
+                        req.job_id,
+                        "QUALITY_REVIEW_SCORED",
+                        {
+                            "scene_id": req.scene_id,
+                            "attempt_number": attempt + 1,
+                            "score": float(score_val),
+                            "passed": (review.recommended_action == "accept"),
+                            "recommended_action": review.recommended_action,
+                            "issues": getattr(review, "issues", []) or []
+                        }
+                    )
+                except Exception:
+                    pass
                 
                 if review.recommended_action == "accept":
                     accepted_raw_path = raw_video_path
@@ -367,6 +429,20 @@ class CanonicalGenerationEngine:
                     break # ACCEPTED
                 else:
                     print(f"[CanonicalEngine] Attempt {attempt+1} rejected by QualityReviewer.")
+                    if attempt < max_retries:
+                        try:
+                            broadcast_event(
+                                req.job_id,
+                                "RETRY_ATTEMPTED",
+                                {
+                                    "scene_id": req.scene_id,
+                                    "retry_number": attempt + 1,
+                                    "max_retries": max_retries,
+                                    "reason": f"QualityReviewer rejected under {req.quality_priority}"
+                                }
+                            )
+                        except Exception:
+                            pass
                     attempt_doc.status = "REJECTED"
                     attempt_doc.error_category = ErrorCategory.QUALITY_REJECTED.value
                     attempt_doc.rejection_reason = f"QualityReviewer rejected: {', '.join(review.issues)}" if getattr(review, 'issues', None) else f"QualityReviewer rejected under {req.quality_priority}"
@@ -448,6 +524,19 @@ class CanonicalGenerationEngine:
                 norm_op.status = OperationStatus.SUCCEEDED
                 norm_op.completed_at = datetime.datetime.now(datetime.timezone.utc)
                 norm_op.output_reference = normalized_path
+
+                try:
+                    broadcast_event(
+                        req.job_id,
+                        "SCENE_NORMALIZED",
+                        {
+                            "scene_id": req.scene_id,
+                            "actual_duration": audio_duration if audio_duration > 0 else req.expected_duration,
+                            "status": "NORMALIZED"
+                        }
+                    )
+                except Exception:
+                    pass
             except Exception as e:
                 norm_op.status = OperationStatus.FAILED
                 norm_op.error_type = ErrorCategory.TIMELINE_FAILED

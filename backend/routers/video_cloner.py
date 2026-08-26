@@ -1,11 +1,10 @@
 import os
 import uuid
-import datetime
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 
-from core.auth import get_current_user
+from core.auth import get_current_user, get_current_user_flexible
 from core.storage_client import upload_file, generate_signed_get_url
 from core.models.video_cloner import SourceVideoRecord, FinalVideoRecord
 from core.repositories.video_cloner_repos import (
@@ -19,7 +18,6 @@ from core.models.attempt import GenerationAttempt
 from services.source_analyzer import run_source_analysis
 from core.services.clone_blueprint_builder import CloneBlueprintBuilder
 from core.services.production_director import (
-    ProductionDirector,
     BlueprintValidationException,
 )
 from core.services.universal_creative_director import UniversalCreativeDirector
@@ -29,23 +27,22 @@ from core.models.transformation import ProductionTransformationRequest
 from core.services.bible_loader import ProjectBibleLoader
 from config import CREDIT_COSTS
 from fastapi import Request
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, StreamingResponse
+from core.services.telemetry_broadcaster import broadcaster, broadcast_event
 from core.repositories.job_repo import GenerationJobRepository
 from core.models.job import GenerationJob
 from core.tasks import enqueue_generation_task
 from core.auth_oidc import verify_cloud_run_oidc_token
 from core.services.reference_manager import ReferenceManager
 from core.services.prompt_compiler import PromptCompiler
-from services.veo_service import generate_video_with_veo
-from core.services.quality_reviewer import QualityReviewer
 from core.services.continuity_manager import ContinuityManager
-from services.elevenlabs_service import generate_voiceover
-from services.lip_sync_service import sync_lips as lip_sync_video
 from core.services.timeline_builder import TimelineBuilder
 from services.video_engine import concat_scenes
 from config import TEMP_DIR
+from core.logger import get_logger
 
 router = APIRouter(prefix="/projects", tags=["Video Cloner"])
+logger = get_logger(__name__)
 
 source_repo = SourceVideoRepository()
 analysis_repo = SourceAnalysisRepository()
@@ -348,6 +345,34 @@ def get_production_blueprint_status(
     }
 
 
+@router.get("/{project_id}/blueprints/{blueprint_id}/events")
+@router.get("/{project_id}/production-blueprints/{blueprint_id}/events")
+async def stream_blueprint_events(
+    project_id: str,
+    blueprint_id: str,
+    user_id: str = Depends(get_current_user_flexible)
+):
+    """
+    Server-Sent Events (SSE) stream for real-time scene generation telemetry.
+    Supports Firebase Auth via 'Authorization: Bearer <token>' header or '?token=<token>' query param.
+    """
+    bp = production_blueprint_repo.get(user_id, project_id, blueprint_id)
+    if not bp:
+        clone_bp = clone_blueprint_repo.get_latest(user_id, project_id, blueprint_id)
+        if not clone_bp:
+            raise HTTPException(status_code=404, detail="Blueprint not found")
+
+    return StreamingResponse(
+        broadcaster.stream_events(blueprint_id=blueprint_id),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
+
 @router.post("/{project_id}/production-blueprints/{production_blueprint_id}/approve")
 def approve_production_blueprint(
     project_id: str,
@@ -369,13 +394,13 @@ def approve_production_blueprint(
 
 def run_production_job(user_id: str, project_id: str, blueprint_id: str):
     """End-to-End Orchestrator (Phase 8D)"""
-    print(f"[Orchestrator] Starting job for {blueprint_id}")
+    logger.info(f"[Orchestrator] Starting job for {blueprint_id}")
     bp = production_blueprint_repo.get(user_id, project_id, blueprint_id)
     if not bp:
-        print(f"[Orchestrator] Aborting. Blueprint not found for ID: {blueprint_id}")
+        logger.warning(f"[Orchestrator] Aborting. Blueprint not found for ID: {blueprint_id}")
         return
     if bp.status not in ["APPROVED", "IN_PRODUCTION"]:
-        print(f"[Orchestrator] Aborting. Blueprint status is {bp.status}, expected APPROVED or IN_PRODUCTION.")
+        logger.warning(f"[Orchestrator] Aborting. Blueprint status is {bp.status}, expected APPROVED or IN_PRODUCTION.")
         return
         
     from core.models.context import GenerationContext
@@ -430,7 +455,21 @@ def run_production_job(user_id: str, project_id: str, blueprint_id: str):
     try:
         previous_scene_id = None
         for scene in bp.scenes:
-            print(f"[Orchestrator] Processing Scene {scene.scene_number}")
+            logger.info(f"[Orchestrator] Processing Scene {scene.scene_number}")
+            try:
+                broadcast_event(
+                    blueprint_id,
+                    "SCENE_PROGRESS",
+                    {
+                        "scene_number": scene.scene_number,
+                        "total_scenes": len(bp.scenes),
+                        "scene_id": scene.scene_id,
+                        "status": "PROCESSING",
+                        "estimated_duration": scene.estimated_duration_seconds or 5.0
+                    }
+                )
+            except Exception:
+                pass
             
             # Idempotency / Checkpoint check
             attempt_id = f"attempt_{bp.blueprint_id}_{scene.scene_id}"
@@ -495,7 +534,7 @@ def run_production_job(user_id: str, project_id: str, blueprint_id: str):
             attempt_repo.save(user_id, project_id, attempt_id, attempt)
             
             dialogue_text = scene.dialogue[0].text if scene.dialogue else ""
-            speaker = scene.dialogue[0].voice_id if scene.dialogue else "Male" # Using voice_id field for speaker map
+            voice_label = scene.dialogue[0].voice_label if scene.dialogue else "Male" # Using voice_label field for speaker map
             
             # 2. Canonical Engine Generation
             use_lip_sync_req = getattr(scene, "use_lip_sync", None)
@@ -530,7 +569,7 @@ def run_production_job(user_id: str, project_id: str, blueprint_id: str):
                 reference_failure_reason=ref_resolution.reference_failure_reason,
                 fallback_mode=ref_resolution.fallback_mode,
                 dialogue_text=dialogue_text,
-                speaker=speaker,
+                voice_label=voice_label,
                 quality_priority=scene.scene_quality_priority if scene.scene_quality_priority else "BALANCED",
                 use_lip_sync=use_lip_sync_req,
                 allow_lip_sync_fallback=allow_lip_sync_fb,
@@ -576,7 +615,18 @@ def run_production_job(user_id: str, project_id: str, blueprint_id: str):
             scene_clip_paths.append(final_scene_path)
             
         # Assembly (Fail-Closed)
-        print("[Orchestrator] All scenes generated. Reconciling and Validating Timeline...")
+        logger.info("[Orchestrator] All scenes generated. Reconciling and Validating Timeline...")
+        try:
+            broadcast_event(
+                blueprint_id,
+                "ASSEMBLY_START",
+                {
+                    "total_scenes": len(bp.scenes),
+                    "status": "ASSEMBLING"
+                }
+            )
+        except Exception:
+            pass
         timeline.reconcile_timing()
         timeline.validate()
         
@@ -655,10 +705,35 @@ def run_production_job(user_id: str, project_id: str, blueprint_id: str):
         
         bp.status = "COMPLETED"
         production_blueprint_repo.save(user_id, bp)
-        print(f"[Orchestrator] Success! Output: {public_url}")
+        logger.info(f"[Orchestrator] Success! Output: {public_url}")
+
+        try:
+            broadcast_event(
+                blueprint_id,
+                "ASSEMBLY_COMPLETE",
+                {
+                    "status": "COMPLETED",
+                    "output_uri": public_url,
+                    "final_video_url": public_url,
+                    "duration_seconds": total_duration_assembled
+                }
+            )
+        except Exception:
+            pass
         
     except Exception as e:
-        print(f"[Orchestrator] Job Failed: {e}")
+        logger.error(f"[Orchestrator] Job Failed: {e}")
+        try:
+            broadcast_event(
+                blueprint_id,
+                "GENERATION_FAILED",
+                {
+                    "status": "FAILED",
+                    "error": str(e)
+                }
+            )
+        except Exception:
+            pass
         import traceback
         traceback.print_exc()
         try:
@@ -734,8 +809,7 @@ async def generate_worker(request: Request, payload: TaskPayload):
     # Validate Ownership (App-level checks)
     bp = production_blueprint_repo.get(payload.user_id, payload.project_id, payload.blueprint_id)
     if not bp:
-        import logging
-        logging.warning(f"Worker FAILED for {payload.job_id}: Blueprint not found. user={payload.user_id} project={payload.project_id} bp_id={payload.blueprint_id}")
+        logger.warning(f"Worker FAILED for {payload.job_id}: Blueprint not found. user={payload.user_id} project={payload.project_id} bp_id={payload.blueprint_id}")
         # Non-retryable
         job_repo.release_reservation(payload.user_id, payload.project_id, payload.blueprint_id, payload.job_id)
         return {"status": "FAILED", "reason": "Blueprint not found"}
@@ -743,16 +817,14 @@ async def generate_worker(request: Request, payload: TaskPayload):
     # Idempotency / State Lock
     started = job_repo.try_start_job(payload.user_id, payload.project_id, payload.blueprint_id, payload.job_id)
     if not started:
-        import logging
-        logging.warning(f"Worker IGNORED for {payload.job_id}: Job already running, completed, or missing.")
+        logger.warning(f"Worker IGNORED for {payload.job_id}: Job already running, completed, or missing.")
         # Already RUNNING or COMPLETED, or FAILED. Idempotent success returns 200 so Cloud Tasks stops.
         return {"status": "IGNORED", "reason": "Job is already running or completed"}
         
     try:
         if payload.test_mode:
             import time
-            import logging
-            logging.info(f"Running safe TEST MODE worker execution for job {payload.job_id}")
+            logger.info(f"Running safe TEST MODE worker execution for job {payload.job_id}")
             time.sleep(1) # Simulate safe test execution
             # Commit credits
             job_repo.mark_completed(payload.user_id, payload.project_id, payload.blueprint_id, payload.job_id)
@@ -769,8 +841,7 @@ async def generate_worker(request: Request, payload: TaskPayload):
         raise he
     except Exception as e:
         import traceback
-        import logging
-        logging.error(f"Generation error for job {payload.job_id}: {traceback.format_exc()}")
+        logger.error(f"Generation error for job {payload.job_id}: {traceback.format_exc()}")
         # run_production_job follows a fail-closed contract: any exception it
         # raises is treated as a permanent generation failure. Release the
         # credit reservation so the user is NOT charged for failed work, then

@@ -1,5 +1,4 @@
 import os
-import json
 from google.cloud import firestore
 import math
 import uuid
@@ -359,11 +358,11 @@ def run_trend_cloner_job(job_id: str, user_id: str, request: GenerateRequest, cr
                 
                 # Extract dialogue for this scene
                 scene_text = ""
-                speaker = "Male"
+                voice_label = "Male"
                 meme = "none"
                 if scene.dialogue_lines:
                     scene_text = " ".join([dl.get("text", "") for dl in scene.dialogue_lines])
-                    speaker = scene.dialogue_lines[0].get("speaker", "Male")
+                    voice_label = scene.dialogue_lines[0].get("voice_label", "Male")
                     meme = scene.dialogue_lines[0].get("meme_overlay", "none")
 
                 scene_duration = 5.0  # Default if no text
@@ -371,8 +370,8 @@ def run_trend_cloner_job(job_id: str, user_id: str, request: GenerateRequest, cr
                 
                 # Generate audio if there is text
                 if scene_text.strip():
-                    print(f"[Trend Cloner Job] Generating TTS for {speaker}: {scene_text[:30]}...")
-                    vid = VOICE_MAP.get(speaker, "IKne3meq5aSn9XLyUdCD")
+                    print(f"[Trend Cloner Job] Generating TTS for {voice_label}: {scene_text[:30]}...")
+                    vid = VOICE_MAP.get(voice_label, "IKne3meq5aSn9XLyUdCD")
                     audio_clip_path = _generate_single_tts(scene_text, vid)
                     aclip = AudioFileClip(audio_clip_path)
                     scene_duration = aclip.duration
@@ -525,7 +524,7 @@ def run_trend_cloner_job(job_id: str, user_id: str, request: GenerateRequest, cr
                                 status="GENERATING"
                             )
                             attempt_repo.save(user_id, project_id_attempt, attempt.attempt_id, attempt)
-                        except Exception as e:
+                        except Exception:
                             pass
                             
                         video_bytes = generate_video_with_veo(

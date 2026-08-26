@@ -3,7 +3,6 @@ from firebase_admin import credentials, firestore
 from google.cloud import storage
 import os
 import uuid
-import datetime
 
 # 1. Initialize Connection (Firestore only)
 if not firebase_admin._apps:

@@ -5,27 +5,20 @@ Validates VisualIdentityPack, CharacterVisualIdentity multi-angle sheets,
 EnvironmentVisualIdentity, PropVisualIdentity, shot-aware ReferenceManager,
 PromptCompiler sanitization, LipSync product modes, and execution contracts.
 """
-import pytest
-import uuid
-import datetime
-from unittest.mock import MagicMock, patch
 
 from core.models.visual_identity import (
     VisualIdentityPack,
     CharacterVisualIdentity,
     EnvironmentVisualIdentity,
-    PropVisualIdentity,
-    VisualTreatment,
-    ShotReferencePack
+    VisualTreatment
 )
 from core.models.character import Character
 from core.models.scene import Scene
-from core.models.blueprint import ProductionBlueprint, SceneBlueprint, DialogueLine, CameraDirection
+from core.models.blueprint import ProductionBlueprint, SceneBlueprint
 from core.models.context import GenerationContext
 from core.services.bible_loader import ResolvedScene
 from core.services.reference_manager import ReferenceManager
 from core.services.prompt_compiler import PromptCompiler
-from core.services.visual_identity_service import VisualIdentityService
 from core.models.operation_state import verify_execution_certificate
 
 def test_visual_identity_pack_model_structure():

@@ -1,5 +1,4 @@
 import pytest
-import os
 from unittest.mock import patch, MagicMock
 from core.models.scene import Scene
 from core.models.timeline import AudioAsset

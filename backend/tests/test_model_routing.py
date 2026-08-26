@@ -1,6 +1,5 @@
 import ast
 import os
-import pytest
 from unittest.mock import patch, MagicMock, mock_open
 
 from config import ModelRoutingConfig, BASE_DIR

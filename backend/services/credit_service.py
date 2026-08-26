@@ -5,14 +5,12 @@ import os
 # Adapt import path
 try:
     from firebase_utils import db, firestore
-    from models import Transaction, InsufficientFundsError, FeatureLockedError
-    from config import PRICING_TIERS
+    from models import InsufficientFundsError, FeatureLockedError
 except ImportError:
     # If running as script or sub-module where root is not in path
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from firebase_utils import db, firestore
-    from models import Transaction, InsufficientFundsError, FeatureLockedError
-    from config import PRICING_TIERS
+    from models import InsufficientFundsError, FeatureLockedError
 
 def check_feature_access(user_plan: str, feature_name: str):
     """
