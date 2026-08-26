@@ -4,7 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
     Sparkles, Link as LinkIcon, Video, CheckCircle2, Loader2, ArrowRight, 
     Zap, UploadCloud, File as FileIcon, Eye, ShieldCheck, Film, Layers,
-    Volume2, MessageSquare, Play, Download, RefreshCw, ChevronRight, Wand2
+    Volume2, MessageSquare, Play, Download, RefreshCw, ChevronRight, Wand2,
+    ShieldAlert
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
@@ -19,6 +20,25 @@ const NICHES = [
     { id: 'Comedy', label: 'Comedy & Entertainment', color: 'text-pink-400', bg: 'bg-pink-500/10' },
     { id: 'RealEstate', label: 'Real Estate', color: 'text-indigo-400', bg: 'bg-indigo-500/10' }
 ];
+
+/**
+ * P3 Phase D: parses backend 422 detail into per-gate findings.
+ * Backend format: "...validation pipeline: <str(e)>. Gate findings: ['a', 'b']"
+ * (Python list repr -> single quotes, so JSON.parse is not usable).
+ */
+function extractGateFindings(detail: string): string[] {
+    const match = detail.match(/Gate findings:\s*\[([\s\S]*?)\]\s*$/);
+    if (match) {
+        return match[1]
+            .split("', '")
+            .map((s) => s.replace(/^['"]|['"]$/g, "").trim())
+            .filter(Boolean);
+    }
+    const idx = detail.indexOf("validation pipeline");
+    if (idx !== -1) return [detail.slice(idx).replace(/^.*?pipeline:\s*/, "").trim()];
+    return [detail];
+}
+
 
 export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string) => void }) {
     const { user } = useAuth();
@@ -43,6 +63,7 @@ export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string)
     const [targetDuration, setTargetDuration] = useState<number>(30); // Preset ~30s
     const [productionBlueprint, setProductionBlueprint] = useState<any>(null);
     const [isTransforming, setIsTransforming] = useState(false);
+    const [gateFindings, setGateFindings] = useState<string[]>([]);
     
     // User Preservation Options (Authoritative)
     const [preserveVisualStyle, setPreserveVisualStyle] = useState<boolean>(true);
@@ -51,13 +72,20 @@ export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string)
     const [preserveCameraPacing, setPreserveCameraPacing] = useState<boolean>(true);
     const [cloneMode, setCloneMode] = useState<string>('style_only');
 
-    const applyPreset = (preset: 'style_only' | 'characters_and_style' | 'full_visual_clone' | 'trend_inspired') => {
+    const applyPreset = (preset: 'style_only' | 'characters_only' | 'characters_and_style' | 'full_visual_clone' | 'trend_inspired') => {
         setCloneMode(preset);
         if (preset === 'style_only') {
             setPreserveVisualStyle(true);
             setPreserveCharacters(false);
             setPreserveEnvironment(false);
             setPreserveCameraPacing(true);
+        } else if (preset === 'characters_only') {
+            // Contract "Character Clone" (Q2): keep characters + art style;
+            // regenerate environment AND camera/pacing.
+            setPreserveVisualStyle(true);
+            setPreserveCharacters(true);
+            setPreserveEnvironment(false);
+            setPreserveCameraPacing(false);
         } else if (preset === 'characters_and_style') {
             setPreserveVisualStyle(true);
             setPreserveCharacters(true);
@@ -221,6 +249,7 @@ export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string)
     const handleTransform = async () => {
         if (!cloneBlueprint) return;
         setIsTransforming(true);
+        setGateFindings([]); // P3 Phase D: clear prior gate findings on retry
         try {
             const headers = await getAuthHeaders();
             const storyTopic = customPrompt || `Viral ${selectedNiche} concept`;
@@ -242,12 +271,40 @@ export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string)
                     preserve_environment: preserveEnvironment,
                     preserve_camera_pacing: preserveCameraPacing,
                     preserve_trend_structure: cloneMode === 'trend_inspired',
-                    clone_mode: cloneMode
+                    clone_mode: cloneMode,
+                    // ── P3 PHASE D DUAL-SEND ──────────────────────────
+                    // Canonical profile rides ALONGSIDE legacy booleans for
+                    // one release; backend profile-wins rule makes this the
+                    // authoritative source (legacy fields = compat shim).
+                    preservation_profile: {
+                        preserve_visual_style: preserveVisualStyle,
+                        preserve_characters: preserveCharacters,
+                        preserve_environment: preserveEnvironment,
+                        preserve_camera_language: preserveCameraPacing,
+                        preserve_pacing_editing: preserveCameraPacing,
+                        preserve_audio_style: false,
+                        preserve_voice_style: false,
+                        preserve_trend_structure: cloneMode === 'trend_inspired',
+                    },
+                    character_mode: preserveCharacters ? 'PRESERVE_SOURCE' : 'CREATE_NEW',
+                    environment_mode: preserveEnvironment ? 'PRESERVE_SOURCE' : 'CREATE_NEW',
+                    story_mode: cloneMode === 'trend_inspired' ? 'TREND_INSPIRED' : 'STRUCTURE_INSPIRED',
                 })
             });
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
-                throw new Error(errData.detail || `Server returned ${res.status}: Transformation failed.`);
+                const detail: string = errData.detail || "";
+                if (res.status === 422) {
+                    // G2/G3/G4 gate rejection -> surface findings in Step 3
+                    const findings = extractGateFindings(detail);
+                    setGateFindings(findings);
+                    throw new Error(
+                        findings[0]
+                            ? `Validation failed: ${findings[0]}`
+                            : detail || "Validation failed."
+                    );
+                }
+                throw new Error(detail || `Server returned ${res.status}: Transformation failed.`);
             }
             const pbData = await res.json();
             if (pbData && pbData.blueprint_id) {
@@ -621,6 +678,7 @@ export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string)
                                 <div className="flex flex-wrap gap-1.5">
                                     {[
                                         { id: 'style_only', label: 'Style Only' },
+                                        { id: 'characters_only', label: 'Character Clone' },
                                         { id: 'characters_and_style', label: 'Characters + Style' },
                                         { id: 'full_visual_clone', label: 'Full Visual Clone' },
                                         { id: 'trend_inspired', label: 'Trend Inspired' }
@@ -782,6 +840,35 @@ export default function VideoCloner({ onNavigate }: { onNavigate?: (tab: string)
                                 </p>
                             </div>
                         </div>
+
+                        {/* P3 PHASE D: VALIDATION GATE FINDINGS (422 handler) */}
+                        <AnimatePresence>
+                            {gateFindings.length > 0 && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -6 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0 }}
+                                    className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 space-y-2"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <ShieldAlert size={16} className="text-red-400 flex-shrink-0" />
+                                        <span className="text-xs font-bold text-red-300 uppercase tracking-wider">
+                                            Validation Gate Findings
+                                        </span>
+                                    </div>
+                                    <ul className="space-y-1 list-disc list-inside">
+                                        {gateFindings.map((finding, idx) => (
+                                            <li key={idx} className="text-[11px] text-red-200/80 leading-relaxed">
+                                                {finding}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <p className="text-[11px] text-white/50 pt-1">
+                                        Adjust your topic or preservation toggles above, then transform again.
+                                    </p>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
                         <div className="flex justify-between items-center pt-2">
                             <button
