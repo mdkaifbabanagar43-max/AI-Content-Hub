@@ -13,6 +13,7 @@ from core.auth import get_current_user
 from services.veo_service import generate_video_with_veo
 from services.trend_analyzer import analyze_trend_video
 from services.trend_remixer import remix_trend
+from services.intent_adapters.trend_adapter import use_ucd_trend
 from config import TEMP_DIR, CREDIT_COSTS
 from core.storage_client import upload_to_gcs
 from core.firestore_client import get_user_profile, create_job, update_job_status, get_active_job_count, get_job_status
@@ -162,7 +163,15 @@ async def analyze_trend(
         analysis = analyze_trend_video(output_path)
 
         # 3. Multi-scene Remix
-        remix_result = remix_trend(analysis, niche)
+        # P3/Phase-F: flag-gated UCD adoption (wow-moment overlay +
+        # transcript separation guard). Default OFF => byte-identical
+        # legacy path; flip via UCD_TREND_ENABLED=1 after review.
+        if use_ucd_trend():
+            from services.intent_adapters.trend_adapter import remix_trend_via_ucd
+            print("[TrendCloner] UCD_TREND_ENABLED=1 - UCD wow-moment path active")
+            remix_result = remix_trend_via_ucd(analysis, niche)
+        else:
+            remix_result = remix_trend(analysis, niche)
 
         # 4. If character_set_id is auto-generated, save character ref
         art_style = analysis.get("art_style", "")
