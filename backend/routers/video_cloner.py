@@ -18,7 +18,11 @@ from core.models.attempt import GenerationAttempt
 
 from services.source_analyzer import run_source_analysis
 from core.services.clone_blueprint_builder import CloneBlueprintBuilder
-from core.services.production_director import ProductionDirector
+from core.services.production_director import (
+    ProductionDirector,
+    BlueprintValidationException,
+)
+from core.services.universal_creative_director import UniversalCreativeDirector
 from core.models.transformation import ProductionTransformationRequest
 
 # For Orchestration Loop
@@ -282,10 +286,30 @@ def transform_clone_blueprint(
         raise HTTPException(status_code=404, detail="CloneBlueprint not found")
         
     try:
-        director = ProductionDirector(user_id, project_id)
-        production_bp = director.transform_clone_blueprint(clone_bp, request)
+        # P3/Phase-C ROUTE SWITCH: transformation now flows through the
+        # UniversalCreativeDirector boundary. The normalizer permanently
+        # dual-accepts legacy boolean payloads (Q3) and the new optional
+        # preservation_profile/mode blocks (D1), compiling prompts via
+        # TransformationContext (wow-moment engineering) and enforcing the
+        # G1-G4 ValidationPipeline before anything reaches callers.
+        ucd = UniversalCreativeDirector(user_id=user_id, project_id=project_id)
+        production_bp = ucd.transform(
+            clone_bp,
+            legacy_request=request,
+            source_video_id=clone_bp.source_video_id,
+        )
         production_blueprint_repo.save(user_id, production_bp)
         return production_bp
+    except HTTPException:
+        raise
+    except BlueprintValidationException as e:
+        # Gate rejections (preservation/originality/entities) are
+        # client-correctable: surface 422 with actionable gate findings.
+        raise HTTPException(
+            status_code=422,
+            detail=f"Transformation rejected by validation pipeline: {e}. "
+                   f"Gate findings: {getattr(e, 'errors', [])}",
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Transformation failed: {e}")
 
