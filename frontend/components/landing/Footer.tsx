@@ -34,12 +34,12 @@ export default function Footer() {
                         <div className="pt-2 flex flex-col gap-2">
                             <div className="inline-flex items-center gap-2 text-xs text-zinc-300 font-medium bg-white/[0.04] border border-white/10 rounded-lg px-3 py-1.5 w-fit">
                                 <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
-                                Founded by <span className="text-white font-semibold">Md Kaif Babanagar</span>
+                                Founded by <a href="https://www.linkedin.com/in/kaif-babanagar-45734342b" target="_blank" rel="noopener noreferrer" className="text-white font-semibold underline decoration-indigo-400/50 hover:decoration-indigo-400 transition-colors">Md Kaif Babanagar</a>
                             </div>
                             <div className="text-[12px] text-zinc-400 font-mono flex items-center gap-2">
                                 <span>🚀 YC Startup School Track</span>
                                 <span>·</span>
-                                <span>B2B Multi-Tenant Architecture</span>
+                                <span>Enterprise Support: <a href="mailto:kaif@cloneframe.com" className="text-indigo-400 hover:text-indigo-300 transition-colors">kaif@cloneframe.com</a></span>
                             </div>
                         </div>
                     </div>
@@ -143,10 +143,12 @@ export default function Footer() {
 
                 {/* Bottom Line: The Reviewer Hack + Copyright */}
                 <div className="pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-400">
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                         <p>© {new Date().getFullYear()} CloneFrame Inc. All rights reserved.</p>
                         <span>·</span>
-                        <p>Founded by Md Kaif Babanagar</p>
+                        <p>Founded by <a href="https://www.linkedin.com/in/kaif-babanagar-45734342b" target="_blank" rel="noopener noreferrer" className="text-zinc-300 hover:text-white underline decoration-indigo-400/40">Md Kaif Babanagar</a></p>
+                        <span>·</span>
+                        <p className="text-indigo-400">Enterprise Support: <a href="mailto:kaif@cloneframe.com" className="hover:underline text-zinc-300">kaif@cloneframe.com</a></p>
                     </div>
 
                     {/* REQUIRED GOOGLE CLOUD REVIEWER VERIFICATION LINE */}

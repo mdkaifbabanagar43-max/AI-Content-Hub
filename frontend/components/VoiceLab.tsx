@@ -196,7 +196,7 @@ export default function VoiceLab({ onNavigate }: { onNavigate?: (tab: string) =>
                                 James (Premium Studio) {!capabilities?.premium_voices ? '🔒' : ''}
                             </option>
                             <option value="Clone">
-                                {clonedVoiceId ? "My AI Voice (Ready) ✅" : "Clone My Voice (Beta)"}
+                                {clonedVoiceId ? "My AI Voice (Ready) ✅" : "Instant Voice Clone"}
                                 {!canUse('voice_cloning') ? '🔒' : ''}
                             </option>
                         </select>

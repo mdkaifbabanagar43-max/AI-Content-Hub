@@ -7,10 +7,9 @@ import { useRouter } from 'next/navigation';
 
 interface NavbarProps {
     onSignInClick: () => void;
-    onWaitlistClick?: () => void;
 }
 
-export default function Navbar({ onSignInClick, onWaitlistClick }: NavbarProps) {
+export default function Navbar({ onSignInClick }: NavbarProps) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const router = useRouter();
@@ -50,7 +49,7 @@ export default function Navbar({ onSignInClick, onWaitlistClick }: NavbarProps) 
                 <span className="hidden sm:inline text-zinc-400">Powered by Google Cloud & Vertex AI ·</span>
                 <span className="font-medium text-white">Gemini 2.0 Flash + Veo Video Orchestration Engine</span>
                 <span className="hidden md:inline-flex items-center gap-1 text-indigo-300 ml-2 font-mono text-[11px]">
-                    <Cpu size={12} /> B2B SMMA Private Beta
+                    <Cpu size={12} /> Production B2B API Live
                 </span>
             </aside>
 
@@ -102,10 +101,10 @@ export default function Navbar({ onSignInClick, onWaitlistClick }: NavbarProps) 
                             Sign In
                         </button>
                         <button
-                            onClick={onWaitlistClick || onSignInClick}
+                            onClick={() => router.push('/dashboard')}
                             className="group relative px-5 py-2.5 rounded-xl text-sm font-bold bg-white text-black hover:bg-zinc-100 transition-all shadow-[0_0_25px_-5px_rgba(255,255,255,0.4)] flex items-center gap-2 hover:-translate-y-0.5 active:translate-y-0"
                         >
-                            Join Private Beta
+                            Go to Dashboard
                             <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                         </button>
                     </div>
@@ -113,10 +112,10 @@ export default function Navbar({ onSignInClick, onWaitlistClick }: NavbarProps) 
                     {/* Mobile Menu Toggle */}
                     <div className="flex sm:hidden items-center gap-2">
                         <button
-                            onClick={onSignInClick}
+                            onClick={() => router.push('/dashboard')}
                             className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-black"
                         >
-                            Beta
+                            Dashboard
                         </button>
                         <button
                             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -150,12 +149,12 @@ export default function Navbar({ onSignInClick, onWaitlistClick }: NavbarProps) 
                                 <div className="pt-4 border-t border-white/10 flex flex-col gap-3">
                                     <button
                                         onClick={() => {
-                                            onSignInClick();
+                                            router.push('/dashboard');
                                             setMobileMenuOpen(false);
                                         }}
                                         className="w-full py-3 rounded-xl font-bold bg-white text-black text-center"
                                     >
-                                        Join Private Beta / Sign In
+                                        Go to Dashboard
                                     </button>
                                 </div>
                             </div>

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 import {
     Sparkles,
     Zap,
@@ -31,26 +32,10 @@ import Pricing from './Pricing';
 import { toast } from 'sonner';
 
 export default function LandingPage({ onSignInClick }: { onSignInClick: () => void }) {
-    const [waitlistEmail, setWaitlistEmail] = useState('');
-    const [isSubmittingWaitlist, setIsSubmittingWaitlist] = useState(false);
-    const [waitlistJoined, setWaitlistJoined] = useState(false);
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState<'script' | 'voice' | 'render' | 'delivery'>('script');
     const [copiedCode, setCopiedCode] = useState(false);
     const [activeLang, setActiveLang] = useState<'python' | 'curl' | 'node'>('python');
-
-    const handleWaitlistSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!waitlistEmail || !waitlistEmail.includes('@')) {
-            toast.error('Please enter a valid business email address.');
-            return;
-        }
-        setIsSubmittingWaitlist(true);
-        setTimeout(() => {
-            setIsSubmittingWaitlist(false);
-            setWaitlistJoined(true);
-            toast.success('Priority B2B Agency Beta Access confirmed! We have reserved your spot.');
-        }, 600);
-    };
 
     const copyApiSnippet = () => {
         const snippet = activeLang === 'python' ? pythonCode : activeLang === 'node' ? nodeCode : curlCode;
@@ -125,10 +110,7 @@ console.log(\`Pipeline active: \${job.job_id} | Status: \${job.status}\`);`;
 
     return (
         <div className="min-h-screen bg-[#030307] text-white font-sans selection:bg-indigo-500/30 overflow-x-hidden">
-            <Navbar onSignInClick={onSignInClick} onWaitlistClick={() => {
-                const element = document.getElementById('waitlist-section');
-                if (element) element.scrollIntoView({ behavior: 'smooth' });
-            }} />
+            <Navbar onSignInClick={onSignInClick} />
 
             {/* =========================================================================
                 1. HERO SECTION (Explicit B2B Headline & Sub-headline from Brief)
@@ -152,71 +134,47 @@ console.log(\`Pipeline active: \${job.job_id} | Status: \${job.status}\`);`;
 
                     {/* REQUIRED HERO HEADLINE */}
                     <h1 className="text-[44px] sm:text-[64px] lg:text-[84px] font-[900] tracking-[-0.035em] leading-[1.05] text-white mb-7 max-w-5xl mx-auto">
-                        The Automated AI Video Pipeline for{' '}
+                        The Automated Video Orchestration API for{' '}
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300">
-                            B2B Agencies.
+                            Enterprise & Agencies.
                         </span>
                     </h1>
 
                     {/* REQUIRED HERO SUB-HEADLINE */}
                     <p className="text-[19px] sm:text-[23px] lg:text-[25px] text-zinc-300 font-normal max-w-4xl mx-auto mb-10 leading-relaxed tracking-tight">
-                        Turn concepts into ready-to-publish short-form videos in seconds. Orchestrating <span className="text-white font-semibold">Gemini 2.0</span>, <span className="text-white font-semibold">Veo</span>, and <span className="text-white font-semibold">ElevenLabs</span> into one unified API.
+                        A self-serve SaaS platform that chains <span className="text-white font-semibold">Gemini 2.0</span>, <span className="text-white font-semibold">Google Veo</span>, and <span className="text-white font-semibold">ElevenLabs Multilingual v2</span> into a single unified dashboard.
                     </p>
 
-                    {/* Interactive Waitlist / CTA Component */}
-                    <div id="waitlist-section" className="max-w-xl mx-auto mb-14">
-                        {!waitlistJoined ? (
-                            <form onSubmit={handleWaitlistSubmit} className="flex flex-col sm:flex-row items-center gap-2.5 p-2 bg-[#090912]/90 border border-white/15 rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.8)] backdrop-blur-2xl">
-                                <input
-                                    type="email"
-                                    value={waitlistEmail}
-                                    onChange={(e) => setWaitlistEmail(e.target.value)}
-                                    placeholder="Enter your agency or business email..."
-                                    className="w-full px-5 py-3.5 bg-transparent text-white placeholder-zinc-500 text-sm sm:text-base outline-none rounded-xl"
-                                    required
-                                />
-                                <button
-                                    type="submit"
-                                    disabled={isSubmittingWaitlist}
-                                    className="w-full sm:w-auto px-7 py-3.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 hover:from-indigo-400 hover:to-purple-500 text-white font-bold text-sm sm:text-base rounded-xl transition-all shadow-[0_0_25px_rgba(99,102,241,0.4)] flex items-center justify-center gap-2 shrink-0 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
-                                >
-                                    {isSubmittingWaitlist ? 'Securing Spot...' : 'Join Private Beta'}
-                                    <ArrowRight size={16} />
-                                </button>
-                            </form>
-                        ) : (
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                className="p-4 bg-emerald-950/40 border border-emerald-500/30 rounded-2xl text-center flex items-center justify-between gap-4"
-                            >
-                                <div className="flex items-center gap-3 text-left">
-                                    <CheckCircle2 size={24} className="text-emerald-400 shrink-0" />
-                                    <div>
-                                        <div className="text-sm font-bold text-white">Spot Reserved: Agency Beta Priority Queue (#142)</div>
-                                        <div className="text-xs text-emerald-300/80">Check {waitlistEmail} for your developer sandbox key.</div>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={onSignInClick}
-                                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs rounded-lg shrink-0 transition-colors"
-                                >
-                                    Launch App
-                                </button>
-                            </motion.div>
-                        )}
+                    {/* Self-Serve SaaS Action Buttons */}
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-14">
+                        <button
+                            onClick={() => router.push('/dashboard')}
+                            className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 hover:from-indigo-400 hover:to-purple-500 text-white font-bold text-base sm:text-lg rounded-2xl transition-all shadow-[0_0_30px_rgba(99,102,241,0.4)] flex items-center justify-center gap-2.5 hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                            Start Creating
+                            <ArrowRight size={18} />
+                        </button>
+                        <button
+                            onClick={() => {
+                                const element = document.getElementById('pricing');
+                                if (element) element.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                            className="w-full sm:w-auto px-8 py-4 bg-white/[0.06] border border-white/15 text-white font-semibold text-base sm:text-lg rounded-2xl hover:bg-white/10 transition-colors"
+                        >
+                            View Pricing Plans
+                        </button>
+                    </div>
 
-                        <div className="flex flex-wrap items-center justify-center gap-6 mt-4 text-xs sm:text-sm text-zinc-400 font-medium">
-                            <span className="flex items-center gap-1.5">
-                                <CheckCircle2 size={14} className="text-emerald-400" /> Multi-Tenant Agency Workspaces
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                                <CheckCircle2 size={14} className="text-emerald-400" /> Dedicated Google Cloud Compute
-                            </span>
-                            <span className="flex items-center gap-1.5">
-                                <CheckCircle2 size={14} className="text-emerald-400" /> Zero Infrastructure Overhead
-                            </span>
-                        </div>
+                    <div className="flex flex-wrap items-center justify-center gap-6 mt-4 text-xs sm:text-sm text-zinc-400 font-medium">
+                        <span className="flex items-center gap-1.5">
+                            <CheckCircle2 size={14} className="text-emerald-400" /> Multi-Tenant Agency Workspaces
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                            <CheckCircle2 size={14} className="text-emerald-400" /> Dedicated Google Cloud Compute
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                            <CheckCircle2 size={14} className="text-emerald-400" /> ElevenLabs Voice API Native
+                        </span>
                     </div>
 
                     {/* Live Pipeline Metric Counters */}
@@ -693,7 +651,7 @@ console.log(\`Pipeline active: \${job.job_id} | Status: \${job.status}\`);`;
             </div>
 
             {/* =========================================================================
-                7. FINAL CTA (Join Private Beta)
+                7. FINAL CTA (Start Creating / Dashboard)
             ========================================================================= */}
             <section className="py-28 relative overflow-hidden bg-gradient-to-b from-transparent via-indigo-950/20 to-black border-t border-white/10">
                 <div className="w-full max-w-4xl mx-auto px-6 text-center relative z-10">
@@ -709,19 +667,17 @@ console.log(\`Pipeline active: \${job.job_id} | Status: \${job.status}\`);`;
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                         <button
-                            onClick={() => {
-                                const element = document.getElementById('waitlist-section');
-                                if (element) element.scrollIntoView({ behavior: 'smooth' });
-                            }}
-                            className="w-full sm:w-auto px-10 py-4 bg-white text-black font-[800] text-lg rounded-2xl hover:bg-zinc-200 transition-all shadow-[0_0_40px_rgba(255,255,255,0.3)] hover:scale-105 active:scale-95"
+                            onClick={() => router.push('/dashboard')}
+                            className="w-full sm:w-auto px-10 py-4 bg-white text-black font-[800] text-lg rounded-2xl hover:bg-zinc-200 transition-all shadow-[0_0_40px_rgba(255,255,255,0.3)] hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
                         >
-                            Join Private Beta
+                            Go to Dashboard
+                            <ArrowRight size={18} />
                         </button>
                         <button
                             onClick={onSignInClick}
                             className="w-full sm:w-auto px-10 py-4 bg-white/[0.06] border border-white/15 text-white font-[700] text-lg rounded-2xl hover:bg-white/10 transition-colors"
                         >
-                            Sign In / Sandbox
+                            Sign In to Workspace
                         </button>
                     </div>
                 </div>
